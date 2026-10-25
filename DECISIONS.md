@@ -5,6 +5,50 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-102: The app's containers reach the public internet and nothing else
+
+**Date:** 2026-10-26T01:29:37+05:30
+**Status:** built, tested on the host, deployed with this change
+
+D-101 left one gap for the owner: code that ever ran inside the app container could
+open connections to the host, to the other machines on its private network, and to
+the cloud's metadata service. Checked from inside the running container before this
+change: the metadata service answered, and the host's ssh, http and https ports were
+open on its bridge address. The host is shared with other projects.
+
+The cloud's own firewall (security lists and network security groups, set through
+its CLI) cannot close this: it filters traffic at the machine's network card, and
+none of these connections leaves the machine. The metadata service in particular
+cannot be blocked there. The cloud CLI did confirm the exposure was not yet
+dangerous: the tenancy has no dynamic groups and no policy that gives the machine's
+identity any power, so the certificate the metadata service hands out opens nothing.
+That holds only until someone adds one.
+
+**Decision:** firewall rules on the host, matching only this project's subnet, read
+from Docker at the time they are applied
+([deploy/egress.sh](deploy/egress.sh)). In `DOCKER-USER`, a connection from the
+project to a private, link-local, loopback, shared or multicast range is refused,
+apart from DNS to the host's own resolvers; the public internet stays open. In
+`INPUT`, any new connection from the project to the host itself is refused. A
+systemd unit ([deploy/snipshare-egress.service](deploy/snipshare-egress.service))
+re-applies them whenever Docker starts, and `scripts/deploy.sh` installs it and
+re-applies the rules after every `up`, so a recreated network gets rules for its
+new subnet. Nothing removes them when Docker stops, because with live restore the
+containers keep running.
+
+**Alternatives rejected:** an `internal` Docker network with an egress proxy (a
+third container and a proxy allowlist to keep in step with every service the app
+calls, for the same result); pinning the subnet in Compose (recreating the network
+for a value the script can read); rules in the host's saved `rules.v4` (they load
+before Docker and would mix this project into the host's own file).
+
+**Verified:** applied twice, leaving one jump in each chain. From inside the app:
+the metadata service, the host's ports at both its addresses, the network's gateway
+and another project's bridge are all refused; DNS resolves; Google's keys,
+Turnstile, Resend, GIPHY and Chat all answer.
+
+---
+
 ## D-101: A second security pass, before the first deploy from the public repository
 
 **Date:** 2026-10-25T22:43:40+05:30

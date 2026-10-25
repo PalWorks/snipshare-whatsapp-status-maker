@@ -39,6 +39,12 @@ YouTube changed its player (D-083); load failures carry the step WhatsApp refuse
 at. A 502 or 1033 from Cloudflare means the tunnel cannot reach the app or is down:
 `docker compose ps`, then the tunnel's log.
 
+If the app cannot reach a service it needs and the service is up, check the egress
+rules (D-102): `sudo iptables -S SNIPSHARE-EGRESS` on the host. They refuse private
+and link-local addresses only, so a provider that moved behind one would be refused;
+`sudo snipshare-egress --remove` takes them away while you look, and
+`sudo systemctl restart snipshare-egress` puts them back.
+
 ## The extension's popup and the hosted renderer
 
 **Start with what the popup says.** Every failure there is written to be acted on,

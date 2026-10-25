@@ -6,8 +6,10 @@
 #
 # Everything this project runs on the host lives in one Compose project, `snipshare`,
 # under /opt/snipshare: its own network, volumes and Cloudflare Tunnel, no host
-# ports, nothing in shared configuration. The host is built on (it may be ARM), and
-# the only images ever pruned are this project's own, by label.
+# ports. The one thing outside it is the firewall service that keeps its containers
+# off the host's private network (deploy/egress.sh, D-102), matching only its own
+# subnet. The host is built on (it may be ARM), and the only images ever pruned are
+# this project's own, by label.
 #
 # Three settings, from the environment or from the local .env, never from here: they
 # name somebody's machine and site, and this repository is meant to be fit to publish.
@@ -74,6 +76,11 @@ git -C "$ROOT" rev-parse --short HEAD | ssh "$HOST" "cat > $DEST/REVISION"
 # waiting on a cache nothing ever refreshes.
 ssh "$HOST" "$COMPOSE build --pull app && $COMPOSE up -d --remove-orphans && \
              docker image prune -f --filter label=project.name=snipshare >/dev/null"
+# After `up`, because the rules are written for the network's subnet as it now is.
+ssh "$HOST" "sudo install -m 755 $DEST/deploy/egress.sh /usr/local/sbin/snipshare-egress && \
+             sudo install -m 644 $DEST/deploy/snipshare-egress.service /etc/systemd/system/ && \
+             sudo systemctl daemon-reload && sudo systemctl enable -q snipshare-egress && \
+             sudo systemctl restart snipshare-egress"
 for _ in $(seq 1 45); do
   if ssh "$HOST" "docker inspect -f '{{.State.Health.Status}}' snipshare-app" 2>/dev/null | grep -q healthy; then
     echo "snipshare is healthy, revision $(git -C "$ROOT" rev-parse --short HEAD)"

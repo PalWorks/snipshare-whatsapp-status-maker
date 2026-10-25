@@ -2,6 +2,19 @@
 
 Human readable history. Newest first.
 
+## 2026-10-26, fifty-sixth pass
+
+Written **2026-10-26T01:29:37+05:30**.
+
+### The app reaches the internet and nothing else
+
+D-102. Firewall rules on the host now stop the app's containers from opening
+connections to the host, to the other machines on its private network and to the
+cloud's metadata service; everything the app calls on the public internet still
+works. The rules match only this project's own network, so nothing else on the
+host is affected, and `scripts/deploy.sh` installs them as a service that holds
+after a reboot.
+
 ## 2026-10-25, fifty-fifth pass
 
 Written **2026-10-25T22:43:40+05:30**.

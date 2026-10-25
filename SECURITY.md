@@ -367,8 +367,10 @@ either requirements file.
 | Persistence after a compromise | `PYTHONNOUSERSITE=1`, so the data volume cannot add code that runs at start |
 | Logs and Chat | no email addresses in the log; alerts cannot mention the whole Chat space |
 
-What remains is in LIMITATIONS.md, Table LI-13: the container can still open
-connections to the host it runs on, which only host firewall rules can stop.
+Updated **2026-10-26T01:29:37+05:30** (D-102): the containers can no longer open connections to the
+host, its private network or the cloud's metadata service
+([deploy/egress.sh](deploy/egress.sh)); only the public internet stays open. What
+remains is in LIMITATIONS.md, Table LI-13.
 
 ## Reporting
 

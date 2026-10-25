@@ -34,6 +34,7 @@ row needs more, the task below has it.
 
 | Task | Finished | What it delivered |
 |---|---|---|
+| [T-072](#t-072-done-keep-the-apps-containers-off-the-hosts-private-network) Keep the app's containers off the host's private network | 2026-10-26 | host firewall rules for the project's subnet alone: no host, private network or metadata service, public internet open; installed by `deploy.sh` as a service (D-102) |
 | [T-071](#t-071-done-a-second-security-pass-and-the-first-deploy-from-the-public-repository) A second security pass, and the first deploy from the public repository | 2026-10-25 | static and supply chain audit plus 133 defensive tests; every weakness found fixed and tested (D-101); the repository renamed `snipshare-whatsapp-status-maker`; deployed |
 | [T-070](#t-070-done-audit-and-publish-the-repository) Audit and publish the repository | 2026-10-25 | a four-part audit of the whole codebase with every finding fixed and tested (D-100); AGPL-3.0-only with a commercial licence, third-party notices and contribution terms (D-099); the documentation set completed to the agent documentation guide; a fresh single-commit public repository |
 | [T-069](#t-069-done-an-account-page-both-gif-keys-and-no-black-first-frame) An account page, both GIF keys, no black first frame | 2026-10-25 | `/account` in two columns with Profile, History, API keys, Feedback, Extension and Privacy and data; GIPHY and KLIPY kept at once and searched either or both; feedback mailed with a reply-to; clips open on their picture rather than black; `extension/` renamed `src/` |
@@ -91,6 +92,26 @@ row needs more, the task below has it.
 
 Retired numbers: T-001, T-002, T-003, T-010, T-011 were folded into decisions or
 overtaken; they are not missing, they are gone.
+
+---
+
+## T-072 (done) Keep the app's containers off the host's private network
+
+**Finished:** 2026-10-26T01:29:37+05:30
+
+**Goal.** Code that ever ran inside the app cannot reach the shared host, its
+private network or the cloud's metadata service; everything the app calls still
+works.
+
+**Acceptance.**
+
+- [x] Checked from inside the container first: the metadata service and the host's
+  ports answered; the cloud CLI showed no dynamic group or policy giving the
+  machine's identity any power
+- [x] [deploy/egress.sh](deploy/egress.sh) and its systemd unit, matching only the
+  project's subnet, idempotent; installed and re-applied by `scripts/deploy.sh`
+- [x] After applying: all of those refused from inside the app; DNS, Google,
+  Turnstile, Resend, GIPHY and Chat answer; the site passes its checks
 
 ---
 

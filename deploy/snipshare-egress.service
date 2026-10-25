@@ -1,0 +1,18 @@
+# Re-applies deploy/egress.sh whenever Docker starts, so the rules that keep
+# SnipShare's containers off the host's private network survive a reboot (D-102).
+# Nothing removes them when Docker stops: with live-restore the containers keep
+# running. `snipshare-egress --remove` takes them away by hand. Installed by
+# scripts/deploy.sh.
+[Unit]
+Description=Keep SnipShare's containers to the public internet
+After=docker.service netfilter-persistent.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/snipshare-egress
+
+[Install]
+WantedBy=docker.service multi-user.target

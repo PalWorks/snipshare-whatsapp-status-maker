@@ -10,6 +10,9 @@ Updated **2026-10-25T15:11:42+05:30** for the audit before publication: the imag
 installs [deploy/requirements.txt](deploy/requirements.txt), the app and the tunnel
 have process limits, and every page links to the source (D-099, D-100).
 
+Updated **2026-10-26T01:29:37+05:30**: the project's containers reach the public internet and nothing
+else, by host firewall rules that `deploy.sh` installs (D-102).
+
 This is the generic recipe. The real values (the site's address, the host, the
 accounts and keys) are in the owner's private operations notes and in the host's
 `.env`, never in this repository, which is kept fit to publish
@@ -22,7 +25,7 @@ accounts and keys) are in the owner's private operations notes and in the host's
 | Compose project | `snipshare`, from [deploy/docker-compose.yml](deploy/docker-compose.yml), in `/opt/snipshare` on the host |
 | `app` | container `snipshare-app`, image `snipshare:latest` built on the host: the pages, the page API and the renderer's API on port 8790, reachable only inside the project's network |
 | `tunnel` | container `snipshare-tunnel`, `cloudflare/cloudflared` pinned to a version: the only way in. No host port is opened |
-| Network | `snipshare`, the project's own |
+| Network | `snipshare`, the project's own. Host firewall rules ([deploy/egress.sh](deploy/egress.sh), the `snipshare-egress` service) refuse its connections to the host, to private and link-local ranges and to the metadata service, matching only its subnet (D-102) |
 | Volumes | `snipshare_data` at `/data` (people database, uploads, jobs, each person's clips and stickers under `users/`, the sticker library under `stickers/`, logs); `snipshare_backups` at `/data/backups` (the people database, nightly, seven kept) |
 | Settings | `/opt/snipshare/.env` (mode 600) for the app, every name in [.env.example](.env.example) under "SnipShare"; `/opt/snipshare/tunnel.env` (mode 600) holding `TUNNEL_TOKEN` alone |
 | Image | `python:3.13-slim-trixie`, refreshed at every deploy (`build --pull`), with Debian's ffmpeg and [deploy/requirements.txt](deploy/requirements.txt): what the site runs, without yt-dlp, the token plugin or the websocket client. The extension's zip is built into it at `/app/extension`, read-only to the app (D-101) |
@@ -54,7 +57,10 @@ git-ignored `dist/`), copies only what the image needs (`deploy/`, `wastatus/`,
 `project.name=snipshare` label and nothing else, waits for the app to report healthy,
 and the extension's zip goes into the image itself, copied into the build
 context before the build, so the running app cannot replace it (D-101). The
-script refuses to run unless the host's `.env` and `tunnel.env` are mode 600.
+script refuses to run unless the host's `.env` and `tunnel.env` are mode 600. After
+`up` it installs `deploy/egress.sh` as `/usr/local/sbin/snipshare-egress` with its
+systemd unit and re-applies the rules for the network's current subnet (D-102);
+`sudo iptables -S SNIPSHARE-EGRESS` shows them.
 
 ## Who may use it
 
@@ -117,5 +123,7 @@ take one by hand before any deploy that migrates:
 ssh "$WASTATUS_DEPLOY_HOST" 'cd /opt/snipshare/deploy && docker compose down -v'
 ```
 
+then take the firewall rules away,
+`ssh "$WASTATUS_DEPLOY_HOST" 'sudo systemctl disable --now snipshare-egress; sudo snipshare-egress --remove; sudo rm /usr/local/sbin/snipshare-egress /etc/systemd/system/snipshare-egress.service'`,
 then delete the tunnel in Cloudflare, which removes its DNS record, and the uptime
 monitor. `-v` deletes the volumes, people, clips and backups included.
