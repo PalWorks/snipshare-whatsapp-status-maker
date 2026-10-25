@@ -1,0 +1,18 @@
+<div class="panel">
+  <h1>Sign in</h1>
+  <p class="muted">With the Google account you asked for access with.</p>
+  <div class="notice" id="message" role="status" hidden></div>
+  <div class="google" id="google-button" aria-label="Sign in with Google"></div>
+  <p class="error" id="google-error" role="alert" hidden></p>
+  <div class="actions" id="unknown" hidden>
+    <a class="button button--primary" href="/signup?google=1">Request access with this account</a>
+  </div>
+  <p class="chrome-note">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+    <span>Making a clip needs Google Chrome on a computer, with the {{NAME}} extension.
+      <a href="/install">Get it</a></span>
+  </p>
+  <div class="or">New here?</div>
+  <div class="actions"><a class="button" href="/signup">Request access</a></div>
+</div>
+<script src="https://accounts.google.com/gsi/client" async></script>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:type" content="website">
+<link rel="icon" href="/mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/nav.css">
+<script src="/theme.js"></script>
+</head>
+<body data-page="{{PAGE}}" data-client-id="{{GOOGLE_CLIENT_ID}}"
+      data-sitekey="{{TURNSTILE_SITEKEY}}" data-signed-in="{{SIGNED_IN}}">
+<script src="/nav.js"></script>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="bar">
+  <a class="brand" href="/" aria-label="{{NAME}} home">
+    <img src="/mark.svg" alt="" width="30" height="30">
+    <span>{{NAME}}</span>
+  </a>
+  <nav class="bar__nav" aria-label="Account">
+    <a class="bar__link" href="/install">Get the extension</a>
+    <button type="button" class="iconbutton themetoggle" data-theme-toggle aria-label="Theme">
+      <svg class="themetoggle__system" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-6v2h3v2H7v-2h3v-2H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v7h14V7H5z"/></svg>
+      <svg class="themetoggle__light" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5 2 3h-4l2-3zm0 20-2-3h4l-2 3zM2 12l3-2v4l-3-2zm20 0-3 2v-4l3 2z"/></svg>
+      <svg class="themetoggle__dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.7 2a9 9 0 1 0 9.3 9.3 7 7 0 0 1-9.3-9.3z"/></svg>
+    </button>
+    <a class="button button--small" href="/signin" data-when="signed-out">Sign in</a>
+    <a class="button button--small button--primary bar__open" href="/app" data-when="signed-in" hidden>Open SnipShare</a>
+    <a class="bar__avatar" href="/account" data-when="signed-in" hidden title="Your account" aria-label="Your account">
+      <span class="avatar" data-avatar data-picture="{{PICTURE}}" data-initial="{{INITIAL}}"></span>
+    </a>
+  </nav>
+</header>
+<main id="main">
+{{BODY}}
+</main>
+<footer class="foot">
+  <nav class="foot__links" aria-label="About">
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/install">Get the extension</a>
+    <a href="{{SOURCE_URL}}" rel="noopener">Source code</a>
+    <a href="{{STATUS_URL}}" data-optional="{{STATUS_URL}}">Service status</a>
+  </nav>
+  <p>Contact: <span class="nowrap">{{CONTACT}}</span></p>
+  <p class="foot__fine">{{NAME}} is an independent, experimental project. It is not
+    affiliated with, endorsed or sponsored by YouTube, Google, WhatsApp or Meta.
+    YouTube and WhatsApp are trademarks of their owners and are named here only to
+    say what {{NAME}} works with.</p>
+</footer>
+<script src="/site.js"></script>
+</body>
+</html>

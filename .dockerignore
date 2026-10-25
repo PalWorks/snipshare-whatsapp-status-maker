@@ -1,0 +1,15 @@
+.git
+.venv
+.pytest_cache
+__pycache__
+**/__pycache__
+out
+logs
+tests
+src
+docs
+scripts
+*.md
+.env
+MEMORY.private.md
+!assets/fonts/LICENSE.md

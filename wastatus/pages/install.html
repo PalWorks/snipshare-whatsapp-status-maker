@@ -1,0 +1,57 @@
+<section class="hero">
+  <h1>Get the extension</h1>
+  <p class="hero__lead">Making a clip needs Google Chrome on a computer (Windows, Mac,
+    Linux or ChromeOS) with the {{NAME}} extension. It reads the part of the video
+    you choose in your own browser, and places the finished clip in WhatsApp Web
+    when you ask it to.</p>
+  <div class="actions">
+    <a class="button button--primary" href="/download/snipshare-extension.zip"
+       download>Download the extension</a>
+  </div>
+  <p class="muted">A .zip file of about 100 kB.</p>
+</section>
+
+<section class="section" aria-labelledby="steps">
+  <h2 id="steps">Add it to Chrome</h2>
+  <p>It is not in the Chrome Web Store yet, so it is added this way. It takes a
+    minute, once.</p>
+  <ol class="steps">
+    <li>
+      <h3>Unzip it</h3>
+      <p>Unzip the file into a folder you will keep. Chrome reads the extension from
+        that folder, so do not delete it afterwards.</p>
+    </li>
+    <li>
+      <h3>Turn on Developer mode</h3>
+      <p>Open <span class="code">chrome://extensions</span> in Chrome and switch on
+        <strong>Developer mode</strong>, at the top right.</p>
+    </li>
+    <li>
+      <h3>Load it, and pin it</h3>
+      <p>Press <strong>Load unpacked</strong> and choose the folder. Then pin
+        {{NAME}} from the puzzle piece beside the address bar. Pressing it opens
+        {{NAME}}.</p>
+    </li>
+  </ol>
+  <p class="muted" style="margin-top:12px">Chrome may remind you now and then that a
+    developer extension is on. That is expected for an extension added this way.</p>
+</section>
+
+<section class="section" aria-labelledby="access">
+  <h2 id="access">What it can reach, and why</h2>
+  <ul class="checks">
+    <li><span>YouTube: to read the window you choose, from a video playing in your own
+      browser. Ads play as usual.</span></li>
+    <li><span>YouTube's thumbnails: for the artwork card.</span></li>
+    <li><span>WhatsApp Web: to place the clip and caption in your Status composer when you
+      press <strong>Load into WhatsApp</strong>. It never presses Send.</span></li>
+    <li><span>{{NAME}}: to send the window to the renderer and fetch the finished clip.</span></li>
+  </ul>
+</section>
+
+<section class="section">
+  <div class="actions">
+    <a class="button button--primary" href="/signin" data-when="signed-out">Then sign in</a>
+    <a class="button button--primary" href="/app" data-when="signed-in" hidden>Open {{NAME}}</a>
+  </div>
+</section>

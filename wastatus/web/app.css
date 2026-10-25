@@ -1,0 +1,1414 @@
+/* wastatus local page.
+
+   Mobile first: every rule below is written for a phone held in one hand, and the
+   two media queries at the bottom widen it for a laptop. The page is used in two
+   postures, and the phone is the harder one, so it is the one the base stylesheet
+   describes.
+
+   Neutral surfaces, so the only saturated colour is the button that broadcasts to
+   real people and the two bands WhatsApp will cover. Light and dark come from the
+   same tokens. */
+
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-sunken: #f1f2f4;
+  --text: #1b1c1e;
+  --muted: #6b7076;
+  --border: #e0e3e7;
+  --border-strong: #c9ced4;
+  --accent: #17794a;
+  --accent-hover: #12683f;
+  --accent-text: #ffffff;
+  --warn: #d9822b;
+  --danger: #b3261e;
+  --danger-bg: #fdeceb;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .06);
+  --shadow-lift: 0 6px 20px rgba(16, 24, 40, .10);
+  --step: 8px;
+  --duration: 140ms;
+  /* Anything you must be able to hit while walking. */
+  --touch: 44px;
+}
+
+/* Three states, one palette. The system decides unless you have said otherwise,
+   and saying otherwise sets `data-theme` on the root element. Every dark value is
+   written twice, once for each of those two ways of arriving at dark, because a
+   media query and an attribute cannot be combined into one selector. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121316;
+    --surface: #1a1c1f;
+    --surface-sunken: #22252a;
+    --text: #e6e8eb;
+    --muted: #9ba1a8;
+    --border: #2b2f34;
+    --border-strong: #3d4248;
+    --accent: #2ea36a;
+    --accent-hover: #35b276;
+    --accent-text: #06130c;
+    --warn: #e2a25c;
+    --danger: #f2b8b5;
+    --danger-bg: #3a1614;
+    --shadow: none;
+    --shadow-lift: 0 6px 20px rgba(0, 0, 0, .5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #121316;
+  --surface: #1a1c1f;
+  --surface-sunken: #22252a;
+  --text: #e6e8eb;
+  --muted: #9ba1a8;
+  --border: #2b2f34;
+  --border-strong: #3d4248;
+  --accent: #2ea36a;
+  --accent-hover: #35b276;
+  --accent-text: #06130c;
+  --warn: #e2a25c;
+  --danger: #f2b8b5;
+  --danger-bg: #3a1614;
+  --shadow: none;
+  --shadow-lift: 0 6px 20px rgba(0, 0, 0, .5);
+}
+
+/* So that scrollbars, form controls and the space behind the page follow too. */
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+* { box-sizing: border-box; }
+
+/* `display` on an element beats the hidden attribute, so say it once here and let
+   every rule below set display freely. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 0 var(--step) calc(var(--step) * 4);
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu,
+        "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "kern" 1;
+}
+
+h1, h2 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .86em;
+}
+
+.muted { color: var(--muted); }
+
+/* ───────────────────────────  top bar  ─────────────────────────── */
+
+/* Sticky, because the health chip is also the thing you look at when something
+   is wrong, and on a phone the top of the page is a long way from the buttons. */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--step);
+  max-width: 1180px; margin: 0 auto;
+  padding: calc(var(--step) * 1.5) 0;
+  background: var(--bg);
+}
+
+.topbar__brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar__words { min-width: 0; }
+.topbar__brand h1 {
+  font-size: 16px; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.topbar__tag { display: none; }
+
+.mark { display: block; border-radius: 7px; flex: none; }
+
+.topbar__controls { display: flex; align-items: center; gap: 6px; flex: none; }
+
+.iconbutton {
+  width: 36px; height: 36px; padding: 0; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text); cursor: pointer;
+  transition: border-color var(--duration);
+}
+.iconbutton:hover { border-color: var(--border-strong); }
+.iconbutton svg { width: 17px; height: 17px; fill: currentColor; }
+
+/* One chip for three checks. Green when all three are fine, amber when they are
+   not, and it opens a panel that says which. */
+.statuschip {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  min-height: 36px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 13px; cursor: pointer;
+  transition: border-color var(--duration), background var(--duration);
+}
+.statuschip:hover { border-color: var(--border-strong); }
+.statuschip__dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong);
+  flex: none;
+}
+.statuschip[data-state="ok"] .statuschip__dot { background: var(--accent); }
+.statuschip[data-state="warn"] .statuschip__dot { background: var(--warn); }
+.statuschip[data-state="warn"] { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.statuschip__caret { width: 16px; height: 16px; fill: var(--muted); }
+.statuschip[aria-expanded="true"] .statuschip__caret { transform: rotate(180deg); }
+
+.statuspanel {
+  max-width: 1180px; margin: 0 auto calc(var(--step) * 1.5);
+  padding: calc(var(--step) * 1.5);
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+}
+.statuslist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* On a phone the detail is a machine name and a port, which does not fit beside
+   the thing it describes, so it takes its own line. It goes back on the same line
+   from a tablet up. */
+.statuslist li {
+  display: flex; align-items: center; gap: var(--step); flex-wrap: wrap;
+  font-size: 13.5px;
+}
+.statuslist .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--border-strong);
+}
+.statuslist .dot--ok { background: var(--accent); }
+.statuslist .dot--warn { background: var(--warn); }
+/* Grey, and deliberately not amber. The row it marks reports a setting, not a
+   fault, and dressing a loopback only run up as a problem would be a lie: it is
+   the default and it is usually right. T-025, DECISIONS.md D-027. */
+.statuslist .dot--idle { background: var(--muted); opacity: 0.55; }
+.statuslist .what { font-weight: 500; }
+.statuslist .detail {
+  color: var(--muted); font-size: 12.5px;
+  flex: 1 1 100%; margin-left: 16px; overflow-wrap: anywhere;
+}
+.statuslist .spacer { margin-left: auto; }
+.statuspanel .hint { margin-top: var(--step); }
+
+/* ───────────────────────────  layout  ─────────────────────────── */
+
+.grid {
+  display: grid; gap: calc(var(--step) * 1.5);
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1180px; margin: 0 auto;
+  align-items: start;
+}
+
+/* A column of cards. The form is one, the clip's own sections are another. */
+.stack {
+  display: grid; gap: calc(var(--step) * 1.5); align-content: start;
+  /* minmax, not 1fr: the Recent strip scrolls sideways, and its min-content width
+     would otherwise push this column wider than the space it was given. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* On a phone there is one column, and the DOM's two columns are not its sequence:
+   read straight through they give form, stickers, post, recent, preview, which
+   puts the shelf above the frame it decorates, the frame last of all, and Recent
+   in the middle of the run. Both wrappers dissolve, so every panel is a grid item
+   in its own right and `order` alone decides: fill it in, look at it, decorate
+   it, make and post it, and the old ones last. The wrappers come back as real
+   columns at 901px, which is where the DOM order is the one that counts. */
+#left, #clipside { display: contents; }
+#form { order: 1; }
+#sec-preview { order: 2; }
+#sec-stickers { order: 3; }
+#sec-post { order: 4; }
+#sec-recent { order: 5; }
+
+.card__header { display: flex; align-items: center; justify-content: space-between; gap: var(--step); }
+.card__heading { font-size: 15px; }
+.card__header + .phone { margin-top: calc(var(--step) * 2); }
+
+/* ───────────────────────────  folding cards  ─────────────────────────── */
+
+/* Every section is a card and every card folds, so a phone shows the shape of the
+   whole job in one screen and you open the part you are changing. A collapsed one
+   still reports what is inside it, in the value on the right of its header, which
+   is what stops a fold from becoming a hiding place. Native <details>, so it works
+   with a keyboard and without JavaScript; the script only remembers the state. */
+.accordion {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.accordion > summary {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 52px; padding: 10px 14px;
+  cursor: pointer; list-style: none;
+  border-radius: var(--radius-lg);
+}
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary:hover .accordion__title { color: var(--accent); }
+.accordion[open] > summary {
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.accordion__title { font-size: 14.5px; font-weight: 600; }
+.accordion__value {
+  margin-left: auto; color: var(--muted); font-size: 12.5px; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%;
+}
+/* The fold control. A chevron at 24px in a 32px round target, where it was an
+   18px filled triangle: the whole header takes the press either way, so the
+   circle is not a new hit area, it is the thing that says the header is one.
+   Material's `expand_more`, still rotating to point at the body it opened.
+   Reported on 2026-08-27 as too small to aim at. See DECISIONS.md D-068. */
+.accordion__caret {
+  flex: none; box-sizing: border-box;
+  width: 32px; height: 32px; padding: 4px;
+  border-radius: 50%; fill: var(--muted);
+  transition: transform var(--duration), background var(--duration);
+}
+.accordion > summary:hover .accordion__caret {
+  background: var(--surface-sunken); fill: var(--text);
+}
+.accordion[open] > summary .accordion__caret { transform: rotate(180deg); }
+.accordion__body { padding: calc(var(--step) * 2); min-width: 0; }
+.accordion__body > *:last-child { margin-bottom: 0; }
+
+/* Something is set in there that the header cannot show in full. */
+.dotmark { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+
+/* A word, not a button, for the action that undoes typing. It lives in the header
+   of the card it clears, where it cannot be hit on the way to anything else. */
+.linkbutton {
+  margin-left: auto; padding: 6px 2px; border: 0; background: none;
+  color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.linkbutton + .accordion__caret { margin-left: 0; }
+.accordion__value + .linkbutton { margin-left: 10px; }
+
+/* An action in a header, where the word that `.linkbutton` would need does not
+   fit: this one sits beside a value that is already two names long. It hugs the
+   value rather than the title, because that is where its answer appears, so it
+   takes the free space and the value beside it stops taking any.
+
+   36 pixels square with a 20 pixel icon in it, beside a 24 pixel chevron: the
+   square is the smallest a thumb can be asked to hit, and the glyph is sized to
+   read as the chevron's peer rather than as something smaller than the fold.
+
+   Its own class, deliberately not `.iconbutton`. The top bar's buttons are
+   `.iconbutton`, and this block used to be one too: the same selector, later in
+   the file, so it quietly took the border and the background off the theme button
+   in the top bar and shrank its glyph. Two different buttons cannot share one
+   name. See DECISIONS.md D-068. */
+.headeraction {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0;
+  border: 0; border-radius: 50%; background: none;
+  color: var(--muted); cursor: pointer;
+  transition: background var(--duration), color var(--duration);
+}
+.headeraction + .accordion__value { margin-left: 8px; }
+.headeraction svg { width: 20px; height: 20px; fill: currentColor; }
+.headeraction:hover { background: var(--surface-sunken); color: var(--accent); }
+.headeraction:disabled { cursor: default; }
+/* Working. The spin says so where there is motion, and the fade says so where
+   there is not: the reduced-motion rule at the top of this file turns off every
+   animation on the page, and a button that then looks untouched for ten seconds
+   reads as a button that did nothing. */
+.headeraction[data-working="true"] { color: var(--accent); }
+.headeraction[data-working="true"] svg { animation: spin 900ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .headeraction[data-working="true"] { opacity: .45; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ───────────────────────────  form  ─────────────────────────── */
+
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: calc(var(--step) * 2); }
+/* Fields that answer to the one above them, under a rule that says so and side by
+   side wherever there is room. Look was three stacked label-control-hint blocks and
+   read as one wall of small print: reported on 2026-08-27 as "too congested".
+   `auto-fit` rather than two fixed columns, because card mode hides Background
+   entirely and the field left behind should take the width rather than half of it. */
+.fieldgroup {
+  /* A shade more than a field's own margin. Stacked, these two are read as two
+     questions, and the hint above the next label needs to stop being read as its
+     own subtitle. */
+  display: grid; gap: calc(var(--step) * 2.5);
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: calc(var(--step) * 2);
+  border-top: 1px solid var(--border);
+}
+/* The grid's own gap is the space between them, at every width. */
+.fieldgroup .field { margin-bottom: 0; }
+/* A box with a button on the end of it. The button takes what it needs and the box
+   takes the rest, at any width, which is what `min-width: 0` on a flex child is for:
+   without it the input refuses to shrink below its own default size and pushes the
+   button off a narrow screen. */
+.field__row { display: flex; gap: 8px; align-items: stretch; }
+.field__row input { flex: 1; min-width: 0; }
+.field__row .button { flex: none; white-space: nowrap; }
+
+label, .label { font-size: 13px; font-weight: 500; color: var(--text); }
+
+input[type="text"], input[type="url"], input[type="number"], input[type="search"] {
+  width: 100%; min-height: var(--touch); padding: 10px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+  /* 16px: anything smaller and a phone zooms the page on focus. */
+  font: inherit; font-size: 16px;
+  transition: border-color var(--duration), box-shadow var(--duration);
+}
+input::placeholder { color: var(--muted); opacity: .8; }
+input:hover { border-color: var(--muted); }
+input:focus-visible, button:focus-visible, summary:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+input:focus {
+  border-color: var(--accent); outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* A link is pasted, and a pasted link is replaced far more often than it is
+   edited. The cross is how you start again without a long press and a select all. */
+.input-clear { position: relative; }
+.input-clear input { padding-right: 40px; }
+.input-clear__button {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: none; cursor: pointer;
+}
+.input-clear__button svg { width: 18px; height: 18px; fill: var(--muted); }
+.input-clear__button:hover { background: var(--surface-sunken); }
+.input-clear__button:hover svg { fill: var(--text); }
+.input-clear--search input { padding-right: 12px; }
+
+/* Start, length and end are one decision, so they sit on one row even on the
+   narrowest phone. The labels are small; the boxes are what you aim at. */
+.window { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.window__cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.window__cell label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.window input { padding: 10px 8px; text-align: center; }
+
+.hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+.hint code { background: var(--surface-sunken); padding: 1px 4px; border-radius: 4px; }
+
+.chips { display: grid; grid-auto-flow: column; gap: 6px; margin-top: var(--step); }
+.chips--wrap {
+  display: flex; flex-wrap: wrap; grid-auto-flow: row;
+}
+.chip {
+  min-height: 36px; padding: 4px 10px;
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--surface); color: var(--muted);
+  font: inherit; font-size: 13px; cursor: pointer;
+  transition: background var(--duration), color var(--duration), border-color var(--duration);
+}
+.chip:hover { border-color: var(--muted); color: var(--text); }
+.chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent); color: var(--accent); font-weight: 500;
+}
+
+/* Two halves of one switch, so it fills the row rather than hugging the left. */
+.segmented {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+  padding: 3px; background: var(--surface-sunken); border-radius: var(--radius);
+}
+.segmented__option {
+  min-height: 38px; padding: 7px 10px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--muted);
+  font: inherit; font-size: 13.5px; cursor: pointer;
+  transition: background var(--duration), color var(--duration);
+}
+.segmented__option:hover { color: var(--text); }
+.segmented__option[aria-checked="true"] {
+  background: var(--surface); color: var(--text); font-weight: 500;
+  box-shadow: var(--shadow);
+}
+
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; }
+.check--inline { color: var(--muted); font-size: 12.5px; }
+
+/* ───────────────────────────  buttons  ─────────────────────────── */
+
+/* One button until it is working, then two halves: the thing you started and the
+   way out of it, side by side and the same size. */
+.makeblock {
+  padding-bottom: calc(var(--step) * 2);
+  margin-bottom: calc(var(--step) * 2);
+  border-bottom: 1px solid var(--border);
+}
+.makerow { display: grid; gap: var(--step); grid-template-columns: 1fr; }
+.makerow--working { grid-template-columns: 1fr 1fr; }
+.makerow .button { width: 100%; }
+
+/* Four things you can do, each with a line saying what it does. Two by two from a
+   tablet up, so Delete sits level with Send rather than trailing under them. */
+.doers { display: grid; gap: 12px; }
+.doer { display: grid; gap: 4px; align-content: start; }
+.doer .button { width: 100%; }
+.doer__what { color: var(--muted); font-size: 12.5px; padding: 0 2px; }
+
+.button {
+  min-height: var(--touch); padding: 10px 18px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--radius); border: 1px solid transparent;
+  background: var(--surface); color: var(--text); border-color: var(--border-strong);
+  font: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: background var(--duration), border-color var(--duration), opacity var(--duration);
+}
+.button:hover:not(:disabled) { border-color: var(--muted); }
+.button--primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+/* Waiting on something: a small spinner before the words, the size kept. */
+.button[aria-busy="true"] { cursor: progress; }
+.button[aria-busy="true"]::before {
+  content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent;
+  animation: spin .7s linear infinite;
+}
+.button--primary:hover:not(:disabled) { background: var(--accent-hover); }
+.button--quiet {
+  background: var(--surface); color: var(--text); border-color: var(--border-strong);
+  min-height: 38px; padding: 8px 14px; font-size: 13.5px;
+}
+.button--quiet:hover:not(:disabled) { border-color: var(--muted); }
+.button--danger {
+  background: transparent; color: var(--danger); border-color: var(--border-strong);
+  min-height: 38px; padding: 8px 14px; font-size: 13.5px;
+}
+.button--danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
+/* Armed: the second press is the one that deletes, so it must not look like the
+   first. Two presses instead of a dialog, because a dialog is dismissed by habit. */
+.button--armed { background: var(--danger-bg); border-color: var(--danger); font-weight: 600; }
+.button--small { min-height: 34px; padding: 5px 12px; font-size: 12.5px; }
+.button--icon svg { width: 17px; height: 17px; fill: currentColor; }
+.button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Full width on a phone. The two post actions share the row from 600px up. */
+.button--wide { width: 100%; }
+
+a.button { text-decoration: none; }
+
+.shortcut { display: none; }
+
+/* ───────────────────────────  progress  ─────────────────────────── */
+
+.progress { margin-top: calc(var(--step) * 2); }
+
+/* A sequence, not four words in a row: numbered, joined by the line they travel
+   along, and a tick when the stage is behind you. */
+.steps {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  list-style: none; margin: 0 0 calc(var(--step) * 1.5); padding: 0;
+}
+.steps li {
+  position: relative; padding-top: 26px; text-align: center;
+  color: var(--muted); font-size: 11.5px; line-height: 1.3;
+}
+/* The rail, drawn between the dots rather than under the words. */
+.steps li::before {
+  content: ""; position: absolute; top: 9px; left: -50%; width: 100%; height: 2px;
+  background: var(--border);
+}
+.steps li:first-child::before { display: none; }
+.steps li::after {
+  content: attr(data-step); position: absolute; top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); border: 2px solid var(--border);
+  color: var(--muted); font-size: 10.5px; font-weight: 600;
+}
+.steps li[data-state="active"] { color: var(--accent); font-weight: 600; }
+.steps li[data-state="active"]::after {
+  border-color: var(--accent); color: var(--accent);
+}
+.steps li[data-state="done"] { color: var(--text); }
+.steps li[data-state="done"]::after {
+  content: "✓"; background: var(--accent); border-color: var(--accent);
+  color: var(--accent-text);
+}
+.steps li[data-state="done"]::before { background: var(--accent); }
+
+.progress__track {
+  height: 4px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden;
+}
+.progress__bar {
+  height: 100%; width: 0; border-radius: 999px; background: var(--accent);
+  transition: width 400ms ease-out;
+}
+.progress__meta {
+  display: flex; justify-content: space-between; gap: var(--step);
+  margin-top: 8px; font-size: 13px;
+}
+.progress__elapsed { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ───────────────────────────  preview  ─────────────────────────── */
+
+.phone { margin: 0; display: flex; flex-direction: column; align-items: center; }
+
+.phone__screen {
+  position: relative; width: 100%; max-width: 300px;
+  aspect-ratio: 9 / 16;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 18px; overflow: hidden;
+}
+
+.phone__screen video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+
+/* The live word preview, over the video and under the stickers. Under, because
+   the stickers are drawn live by the page and are draggable; drawing them into
+   this as well would show every one of them twice.
+
+   `cutOpen` sets a mask on this that cuts the moving band out of it, which is what
+   lets the clip play underneath while the new words sit over the old ones. */
+.phone__wordshot {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  background: #000;
+}
+.phone__wordshot[hidden] { display: none; }
+/* While it is being redrawn, dim rather than blank: a preview that disappears on
+   every keystroke is worse than one that is briefly a moment behind. */
+.phone__wordshot.working { opacity: .55; transition: opacity var(--duration); }
+
+/* Says, on the picture, that the picture is ahead of the file. Small, and at the
+   top where WhatsApp's own header band already tells you not to put anything. */
+.phone__ahead {
+  position: absolute; left: 8px; right: 8px; top: 8px; margin: 0; z-index: 3;
+  padding: 5px 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 82%, black);
+  color: #fff; font-size: 11px; line-height: 1.3; text-align: center;
+  pointer-events: none;
+}
+.phone__ahead[hidden] { display: none; }
+
+.phone__empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 0 24px; text-align: center; color: var(--muted); font-size: 13px;
+}
+.phone__empty p { margin: 0; }
+
+/* The two bands WhatsApp composites over a Status. On by default now: they are
+   the difference between a sticker you placed and a sticker nobody will see. */
+.phone__zone {
+  position: absolute; left: 0; right: 0;
+  display: none; align-items: flex-end; justify-content: center;
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 60%, transparent);
+  pointer-events: none;
+}
+.phone__zone span {
+  font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase;
+  color: #fff; background: rgba(0,0,0,.55); padding: 2px 6px; border-radius: 4px;
+  margin: 4px;
+}
+.phone__zone--top {
+  top: 0; height: var(--band-top, 12%); border-bottom: 1px dashed; align-items: flex-end;
+}
+.phone__zone--bottom {
+  bottom: 0; height: var(--band-bottom, 15%); border-top: 1px dashed; align-items: flex-start;
+}
+.phone[data-guides="on"] .phone__zone { display: flex; }
+/* An empty frame has nothing to be safe from, and two amber bands across a grey
+   box read as a fault rather than as a guide. */
+#empty:not([hidden]) ~ .phone__zone { display: none !important; }
+
+/* An echo of the caption box below, drawn where WhatsApp will draw it. Read only:
+   one caption, edited in one labelled place, shown in two. */
+.phone__caption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 10px 10px 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, .72), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+.phone__caption-text {
+  max-height: 68px; overflow: hidden;
+  color: #fff; font-size: 12px; line-height: 1.45;
+  overflow-wrap: anywhere; white-space: pre-wrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+
+/* ───────────────────────────  player  ─────────────────────────── */
+
+/* Native controls would sit exactly where the caption goes, so the preview keeps
+   its own row underneath the frame. */
+.player {
+  display: flex; align-items: center; gap: var(--step);
+  width: 100%; max-width: 300px; margin: calc(var(--step) * 1.5) auto 0;
+}
+.player__button {
+  flex: none; width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--border-strong); border-radius: 50%;
+  background: var(--surface); color: var(--text); cursor: pointer;
+  transition: border-color var(--duration), background var(--duration);
+}
+.player__button:hover { border-color: var(--muted); }
+.player__button svg { width: 18px; height: 18px; fill: currentColor; }
+
+.player__seek {
+  flex: 1 1 auto; min-width: 0; height: 22px; margin: 0;
+  appearance: none; -webkit-appearance: none;
+  background: transparent; cursor: pointer;
+}
+.player__seek::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px; background: var(--surface-sunken);
+}
+.player__seek::-moz-range-track {
+  height: 4px; border-radius: 999px; background: var(--surface-sunken);
+}
+.player__seek::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none; margin-top: -6px;
+  width: 16px; height: 16px; border-radius: 50%; border: 0; background: var(--accent);
+}
+.player__seek::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; border: 0; background: var(--accent);
+}
+.player__seek:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.player__time {
+  flex: none; color: var(--muted); font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────────  stickers  ─────────────────────────── */
+
+/* The placed stickers. Position and size are percentages of the frame, which is
+   exactly what the renderer is sent, so the browser does no arithmetic the
+   renderer has to agree with. See DECISIONS.md D-024. The layer spans the frame
+   but must not swallow clicks meant for what is under it. */
+/* The picture's own box while it is being placed. It looks nothing like a
+   sticker's box on purpose: it is not one, it cannot be deleted or turned, and it
+   is the thing underneath everything rather than a thing dropped on top. Solid and
+   accent coloured against the sticker's white dashes. */
+.framebox {
+  position: absolute; z-index: 2;
+  outline: 2px solid var(--accent); outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  cursor: grab; touch-action: none;
+}
+.framebox[hidden] { display: none; }
+.framebox:active { cursor: grabbing; }
+.framebox:focus-visible { outline-width: 3px; }
+
+/* One grip, at the corner every tool puts it. Bigger than a sticker's handle
+   because the picture is the thing you place first and least often, so it is worth
+   being easy to hit, and there is only one of them to fit. */
+.framebox__grip {
+  position: absolute; right: 0; bottom: 0;
+  width: 22px; height: 22px; padding: 0;
+  transform: translate(50%, 50%);
+  border: 2px solid #fff; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+  cursor: nwse-resize; touch-action: none;
+}
+.framebox__grip::before { content: ""; position: absolute; inset: -11px; }
+
+/* The same rule the handles follow: the cursor keeps saying what the drag is doing
+   after the pointer has left the thing it started on. */
+.phone__screen[data-gesture="picture"],
+.phone__screen[data-gesture="picture"] * { cursor: grabbing; }
+.phone__screen[data-gesture="picture-size"],
+.phone__screen[data-gesture="picture-size"] * { cursor: nwse-resize; }
+
+.decals { position: absolute; inset: 0; pointer-events: none; }
+
+/* The box, not the drawing. It takes its height from the picture inside it, so a
+   sticker that is not square is boxed exactly, and it carries the rotation, so the
+   handles turn with it. See D-038. */
+.decal {
+  position: absolute; display: block;
+  transform-origin: center;
+  cursor: grab; touch-action: none; pointer-events: auto;
+  /* A transparent border, and content-box so it does not eat into the drawing: the
+     sticker is drawn at exactly the fraction of the frame the renderer will paste,
+     and the 8 pixels around it are there to be hit by a fingertip. A sticker at its
+     default size is 60 pixels wide, and a fingertip is nearer 40. */
+  box-sizing: content-box;
+  border: 8px solid transparent;
+}
+.decal:active { cursor: grabbing; }
+.decal__art { display: block; width: 100%; height: auto; }
+
+/* Editing a line where it sits, rather than only in the box down the page. The
+   drawing is a PNG the server makes, so it cannot be typed into; this is a real
+   input laid exactly over it, inside the same box, so it carries the box's
+   rotation and moves with it. The drawing is hidden while it is open, or the
+   words would be on the frame twice. See DECISIONS.md D-076. */
+.decal--editing { cursor: text; }
+.decal--editing .decal__art { visibility: hidden; }
+.decal__edit {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  /* The drawn line is white, centred, and letterspaced. This is the nearest a
+     text input gets to it; the drawing itself comes back the moment you stop. */
+  color: #fff; text-align: center; letter-spacing: .08em;
+  font: 600 1em/1 var(--font, system-ui, sans-serif);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .7);
+  cursor: text; touch-action: auto;
+}
+.decal__edit::selection { background: rgba(255, 255, 255, .3); }
+
+/* While a sticker is being held, the space around it stops being scrollable, so a
+   second finger landing on the frame joins the gesture instead of panning the page
+   or zooming it. It goes back to normal the moment the last finger lifts. */
+.phone__screen.gesturing { touch-action: none; user-select: none; }
+/* The dashed box is a handle, not decoration. It is always declared, so nothing
+   moves when it appears, and it is transparent until there is a reason for it:
+   a hand on the sticker, a slider being dragged, or one just placed. It fades out
+   a moment after that stops, leaving the frame showing what the viewer will see.
+   Outlines are drawn outside the box and do not affect layout, so this costs
+   nothing while it is invisible. */
+.decal { outline: 2px dashed transparent; outline-offset: 3px; transition: outline-color .3s ease; }
+.decal[data-picked="true"] { outline-color: rgba(255, 255, 255, .9); }
+
+/* On a mouse there is no touch to reveal it, so hovering says "this is draggable".
+   Phones report `hover: none` and never match. */
+@media (hover: hover) {
+  .decal:hover { outline-color: rgba(255, 255, 255, .55); }
+}
+
+/* Tabbed to rather than clicked. It borrows the selection's own dashed box rather
+   than drawing a second kind of ring, because focus and selection are the same
+   thing here: tabbing to a box picks it up. */
+.decal:focus { outline-color: rgba(255, 255, 255, .9); }
+.decal:focus-visible { outline-color: #fff; outline-style: solid; }
+
+/* Not a handle: a warning that this sticker sits under WhatsApp's own furniture and
+   will not be seen. It stays until the sticker is moved out. */
+.decal[data-covered="true"] { outline-color: var(--warn); }
+
+/* ── the handles on the box, D-038 ────────────────────────────────────────── */
+
+/* Hidden on every sticker but the selected one, and never in the way of the frame:
+   the resting frame shows what the viewer will see, which is what D-034 was for.
+   `display: none` rather than an opacity fade, because a handle you can half see is
+   a handle you will half hit. */
+/* Everything a handle looks like is declared once, on the handle, and what changes
+   is only whether it is shown. The selection shows all of them; hovering a line of
+   words shows the pencil alone, and that is the only handle any of this offers
+   without a selection. */
+.decal__handle {
+  display: none; position: absolute; padding: 0;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--surface); border: 1.5px solid rgba(0, 0, 0, .35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  cursor: pointer; touch-action: none; z-index: 2;
+}
+/* The visible circle is small so it does not cover the drawing it belongs to. The
+   thing you actually hit is this, which is 42 pixels across at a fingertip's size
+   and stays centred on the circle however the box is scaled. */
+.decal__handle::before {
+  content: ""; position: absolute; inset: -12px; border-radius: 50%;
+}
+
+.decal[data-picked="true"] .decal__handle { display: block; }
+
+.decal__handle--delete { top: 0; right: 0; transform: translate(50%, -50%); }
+.decal__handle--resize { bottom: 0; right: 0; transform: translate(50%, 50%); }
+/* Top left, the one corner the other three leave: delete is top right, resize is
+   bottom right, and rotate stands above the middle. Only free text carries one. */
+.decal__handle--edit { top: 0; left: 0; transform: translate(-50%, -50%); }
+
+/* The pencil is an offer rather than a control, so unlike the rest it shows without
+   a selection: a mouse over a line of words says "you can retype this", which is
+   what every editor has taught a hand to expect. Asked for on 2026-08-27. There is
+   no hover on a touch screen to reveal it with, and none is needed: tapping a line
+   there already selects it and puts its words back in the box that writes them,
+   which is the same thing the pencil does. See D-063.
+
+   `(hover: hover)` alone, which is the query the dashed outline a few rules above
+   uses for the same reason. A phone reports `hover: none` and never matches. */
+@media (hover: hover) {
+  .decal--text:hover .decal__handle--edit { display: block; }
+}
+
+/* The cursor says what the handle under it does. Left at the selected box's own
+   specificity: the rule above that gives every handle a pointer used to be three
+   selectors deep and a bare `.decal__handle--resize` lost to it, so the corner said
+   "click me" like a link in a place where every other tool says "drag me wider".
+   These outrank it either way. The hit area is a `::before` inside the handle,
+   which inherits this. */
+.decal[data-picked="true"] .decal__handle--resize { cursor: nwse-resize; }
+.decal[data-picked="true"] .decal__handle--rotate { cursor: grab; }
+.decal[data-picked="true"] .decal__handle--delete { cursor: pointer; }
+
+/* And it keeps saying it while the drag is on. A gesture pulls the pointer off the
+   handle within a few pixels, and without this the cursor would fall back to the
+   box's own grab hand halfway through a resize. The frame wears the gesture's
+   cursor until the hand comes off, `*` included, or a child would take it back. */
+.phone__screen[data-gesture="resize"],
+.phone__screen[data-gesture="resize"] * { cursor: nwse-resize; }
+.phone__screen[data-gesture="rotate"],
+.phone__screen[data-gesture="rotate"] * { cursor: grabbing; }
+/* Above the box on a short stem, which is where PowerPoint and Keynote put it and
+   therefore where a hand goes looking. The stem is drawn by the handle so nothing
+   else has to know the box's height. */
+.decal__handle--rotate { top: 0; left: 50%; transform: translate(-50%, -170%); }
+.decal[data-picked="true"] .decal__handle--rotate::after {
+  content: ""; position: absolute; left: 50%; top: 100%;
+  width: 1.5px; height: 12px; margin-left: -.75px;
+  background: rgba(255, 255, 255, .9);
+}
+
+/* The marks inside the circles: a cross, a corner, and an open arc. Drawn in CSS
+   rather than fetched, because three tiny images are three more requests and these
+   have to be crisp at 18 pixels. */
+.decal__handle--delete::after {
+  content: "×"; position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 15px; line-height: 1; color: var(--text);
+}
+.decal__handle--resize::after {
+  content: ""; position: absolute; right: 4px; bottom: 4px;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--text); border-bottom: 1.5px solid var(--text);
+}
+.decal__handle--edit {
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23111' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E")
+    center / 11px 11px no-repeat;
+}
+:root[data-theme="dark"] .decal__handle--edit {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23eee' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .decal__handle--edit {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23eee' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E");
+  }
+}
+
+.decal__handle--rotate {
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23111' stroke-width='2.4' stroke-linecap='round' d='M20 12a8 8 0 1 1-2.3-5.6'/%3E%3Cpath fill='%23111' d='M20 3v5h-5z'/%3E%3C/svg%3E")
+    center / 12px 12px no-repeat;
+}
+/* The pale ink, for a dark surface. Both halves are needed and neither covers the
+   other: the attribute is only there once somebody has chosen a theme, and the
+   media query is the only thing that knows what the machine's own setting is.
+   `:root:not([data-theme="light"])` on its own matched a system-light page as well,
+   and drew a near-white arc on a near-white circle. */
+:root[data-theme="dark"] .decal__handle--rotate {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23eee' stroke-width='2.4' stroke-linecap='round' d='M20 12a8 8 0 1 1-2.3-5.6'/%3E%3Cpath fill='%23eee' d='M20 3v5h-5z'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .decal__handle--rotate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23eee' stroke-width='2.4' stroke-linecap='round' d='M20 12a8 8 0 1 1-2.3-5.6'/%3E%3Cpath fill='%23eee' d='M20 3v5h-5z'/%3E%3C/svg%3E");
+  }
+}
+
+/* A fingertip needs 44 pixels and two of them need 88 between them. A default
+   sticker is 76 pixels to hit, so on a touch screen there is room for exactly one
+   handle and it is the cross: pinch and twist already do size and rotation, and
+   nothing else deletes. This is the whole of D-038's mobile half. */
+/* The test is positive, "this is a touch screen", rather than "this is not a
+   mouse". A browser that reports neither, which is what a headless one does, then
+   keeps the full set instead of quietly losing two handles and both sliders: the
+   safe way round for a query to fail. It is the same pair the hover outline above
+   relies on. */
+@media (hover: none) and (pointer: coarse) {
+  .decal[data-picked="true"] .decal__handle--resize,
+  .decal[data-picked="true"] .decal__handle--edit,
+  .decal[data-picked="true"] .decal__handle--rotate { display: none; }
+  .decal[data-picked="true"] .decal__handle { width: 24px; height: 24px; }
+  .decal[data-picked="true"] .decal__handle::before { inset: -10px; }
+  .decal__handle--delete::after { font-size: 19px; }
+}
+
+.stickers__bar { display: flex; gap: var(--step); margin-bottom: var(--step); }
+/* The source toggle had a margin above it and none below, so it sat on top of the
+   search box. Reported on 2026-08-22 as "too close by". */
+#sticker-source { margin-bottom: calc(var(--step) * 1.5); }
+
+/* A landing place for a picture. It is `contenteditable` on purpose: a phone
+   keyboard decides whether to offer its GIF tab from what the focused element says
+   it accepts, and a plain input says text only. Nothing is ever kept in here, so it
+   is styled as a slot rather than as a field you would type into. */
+.gifbox { margin: 0 0 var(--step); }
+/* The chooser sits under the Drawings/GIFs toggle rather than beside it, so the
+   two rows read as "what am I searching" then "who am I asking". */
+/* The source toggle is a row, not a two column grid, because the provider choice
+   rides on its right end. `margin-left: auto` is what pushes it there, and what
+   keeps it there when the row wraps. */
+.chips--source { display: flex; align-items: center; flex-wrap: wrap; }
+
+/* Radios, not pills. As pills these sat under the source toggle wearing its exact
+   shape and colour, which said "another choice of the same standing" about what is
+   really a detail of the one above. `display: none` here and shown only by the wide
+   screen rule below. */
+.gifpick { display: none; margin-left: auto; align-items: center; gap: 12px; }
+.gifpick__choice {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; letter-spacing: .04em; color: var(--muted); cursor: pointer;
+}
+.gifpick__choice input { accent-color: var(--accent); margin: 0; }
+.gifpick__choice:has(input:checked) { color: var(--text); }
+.gifbox__field {
+  min-height: 52px; padding: 12px 14px;
+  /* The border is drawn from the accent rather than the hairline colour: on a
+     phone this box has to read as a thing you tap, and a hairline dashed rule
+     around pale placeholder text reads as nothing at all. Seen on the owner's
+     Galaxy M30, where the box was invisible until it was focused. */
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 12px;
+  background: var(--surface); color: var(--ink);
+  font-size: 16px;            /* 16px or a phone zooms the page on focus */
+  overflow: hidden;
+}
+.gifbox__field:empty::before {
+  content: attr(data-empty);
+  color: var(--muted);
+}
+.gifbox__field:focus {
+  outline: none;
+  border-color: var(--accent); border-style: solid;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.gifbox__field img { max-width: 100%; height: auto; }
+.gifbox__hint { margin: 6px 2px 0; color: var(--muted); font-size: 13px; }
+.stickers__bar .input-clear { flex: 1 1 auto; min-width: 0; }
+#sticker-tags { margin: 0 0 var(--step); }
+#sticker-hint { margin-top: var(--step); }
+
+/* A shelf, not a wall: it scrolls, so the picker never pushes the frame off the
+   screen while you are aiming at it. */
+.shelf {
+  display: grid; gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr));
+  max-height: var(--shelf-height); overflow-y: auto;
+  padding: 2px; overscroll-behavior: contain;
+  --cell: 52px;
+  --shelf-height: 172px;
+}
+
+/* A drawing is a glyph and reads at any size. A GIF is somebody's video, and at
+   52 pixels there is nothing to judge: reported on 2026-08-22 as "I am unable to
+   judge them". Bigger cells, and a taller shelf so more than one row shows. */
+.shelf[data-source="gifs"] { --cell: 92px; --shelf-height: 216px; }
+.shelf__item {
+  aspect-ratio: 1; padding: 5px; border: 1px solid transparent; border-radius: 10px;
+  background: var(--surface); cursor: pointer;
+}
+.shelf__item:hover { border-color: var(--accent); }
+
+/* A sticker that moves, shown as a still. Small enough to ignore, present enough
+   to answer "which of these are the animated ones". */
+.shelf__item[data-moving="true"] { position: relative; }
+.shelf__item[data-moving="true"]::after {
+  content: "▶";
+  position: absolute; right: 2px; bottom: 1px;
+  font-size: 9px; line-height: 1;
+  color: var(--bg); background: var(--accent);
+  border-radius: 4px; padding: 1px 3px;
+  pointer-events: none;
+}
+.shelf__item img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* A grid item unless told otherwise, which put this sentence in one 52 pixel
+   column, one word per line. Reported on 2026-08-22, and it had been wrong since
+   the shelf became a grid. */
+.shelf__empty {
+  grid-column: 1 / -1;
+  color: var(--muted); font-size: 12.5px; padding: 6px 2px;
+}
+
+/* A GIF result is a rectangle of somebody else's aspect ratio, unlike a square
+   drawing, so it is fitted rather than stretched and the cell keeps its shape. */
+.shelf__item--gif img { object-fit: cover; }
+.shelf__item--working { opacity: .45; pointer-events: none; }
+
+/* The attribution both providers' terms ask for. Fine print by instruction and by
+   judgement: it is a credit, not a banner, and it earns its place by being true
+   rather than by being seen. */
+/* A credit, not a banner. Both providers require a visible mark, so this cannot
+   be removed, only made to stop competing with the instructions it sits beside:
+   smaller, fainter, and on the end of the hint's own line rather than below it. */
+.stickers__foot {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.stickers__foot .hint { flex: 1 1 200px; }
+.finemark {
+  color: var(--muted); font-size: 10px; margin-top: 6px;
+  opacity: .55; letter-spacing: .01em; white-space: nowrap;
+}
+
+.picked {
+  display: flex; align-items: center; gap: var(--step); flex-wrap: wrap;
+  margin-top: var(--step); padding: var(--step);
+  background: var(--surface-sunken); border-radius: var(--radius);
+}
+.picked__slider { display: flex; align-items: center; gap: 8px; font-size: 12.5px; flex: 1 1 130px; }
+/* Kept where there is a mouse, which has no second finger and is the only way to
+   set an exact number; dropped where pinch and twist already do both jobs and the
+   numbers mean nothing. D-038. Remove stays in both, because a sticker shrunk to
+   the minimum is smaller than the cross that would delete it. */
+@media (hover: none) and (pointer: coarse) {
+  .picked__slider { display: none; }
+  .picked { justify-content: flex-end; }
+}
+.picked__slider input { flex: 1 1 auto; min-width: 80px; accent-color: var(--accent); height: 22px; }
+
+/* ───────────────────────────  the clip  ─────────────────────────── */
+
+#result { margin-top: calc(var(--step) * 2); }
+
+.clip { margin-bottom: calc(var(--step) * 2); }
+.clip__name { display: block; font-size: 15px; line-height: 1.35; }
+.clip__facts {
+  display: flex; align-items: center; gap: var(--step); flex-wrap: wrap;
+  margin-top: 6px; font-size: 13px;
+}
+.badge {
+  padding: 2px 8px; border-radius: 999px; font-size: 11.5px;
+  background: var(--surface-sunken); color: var(--muted);
+}
+
+/* The caption gets a labelled box of its own. Before this it was a line of text
+   under a bar that said "Caption", above a heading that said the song's name, and
+   the question it produced was "which of these is the caption". */
+.caption { margin-bottom: calc(var(--step) * 2); }
+.caption__bar {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--step);
+  margin-bottom: 6px;
+}
+.caption__state { color: var(--muted); font-size: 12px; }
+.caption__state--warn { color: var(--danger); }
+.caption__box {
+  min-height: var(--touch); padding: 10px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+  font-size: 15px; line-height: 1.5;
+  overflow-wrap: anywhere; white-space: pre-wrap; cursor: text;
+  transition: border-color var(--duration), box-shadow var(--duration);
+}
+.caption__box:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.caption__box:empty::before { content: attr(data-placeholder); color: var(--muted); }
+/* Copy belongs to the box, so it sits in the box, at the corner your thumb is
+   nowhere near while typing. */
+.caption__field { position: relative; }
+.caption__field .caption__box { padding-right: 46px; }
+.caption__copy {
+  position: absolute; top: 5px; right: 5px;
+  width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 8px; background: none; cursor: pointer;
+}
+.caption__copy svg { width: 17px; height: 17px; fill: var(--muted); }
+.caption__copy:hover { background: var(--surface-sunken); }
+.caption__copy:hover svg { fill: var(--text); }
+#copy-done { fill: var(--accent) !important; }
+.caption .hint { margin-top: 6px; }
+
+.alert, .notice {
+  padding: 10px 12px; border-radius: var(--radius); font-size: 13.5px;
+  margin: 0 0 calc(var(--step) * 2);
+}
+.alert { background: var(--danger-bg); color: var(--danger); }
+/* A warning, not a failure. The clip below is fine, it is just older than the form
+   above it, so this sits a step down from the red an error gets. */
+.alert--soft {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  color: var(--warn);
+}
+/* The button that has been told once. It keeps its label, because Download's lives
+   in a span and rewriting the anchor's text would throw the span away, so the
+   changed mind is shown on the outline instead and said in words in the notice. */
+.doers [data-stale="true"] {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.notice {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* Whichever machine the page was opened from gets the filled button, and it goes
+   first. Nothing is hidden either way, so guessing wrong costs a glance. */
+body[data-where="here"] #load { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+body[data-where="here"] #load:hover:not(:disabled) { background: var(--accent-hover); }
+body[data-where="here"] #doer-load { order: -1; }
+body[data-where="away"] #download { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+body[data-where="away"] #download:hover { background: var(--accent-hover); }
+
+#post-hint { margin-top: var(--step); }
+
+/* ───────────────────────────  recent  ─────────────────────────── */
+
+/* One scrolling row, so the history never dominates the page it sits under. */
+.recent__list {
+  display: grid; gap: var(--step);
+  grid-auto-flow: column; grid-auto-columns: 116px;
+  overflow-x: auto; padding-bottom: 6px;
+  scrollbar-width: thin;
+  /* Fade the right edge so a half shown tile reads as "there is more" rather
+     than as a clipped one. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.recent__list:hover { mask-image: none; }
+
+/* A tile is a box with two actions in it, so it is a `div` holding two buttons
+   rather than one button: a button inside a button is invalid, and the browser
+   unnests it into siblings, which puts the cross outside the tile it belongs to. */
+.tile {
+  position: relative;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); overflow: hidden;
+  transition: border-color var(--duration), transform var(--duration);
+}
+.tile:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+/* The whole tile, minus the cross sitting on top of it. */
+.tile__open {
+  display: block; width: 100%; padding: 0; border: 0; background: none;
+  text-align: left; font: inherit; color: var(--text); cursor: pointer;
+}
+.tile__thumb {
+  width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+.tile__body { padding: 8px 9px; }
+.tile__name {
+  display: block; font-size: 12.5px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tile__meta { display: block; color: var(--muted); font-size: 11.5px; }
+/* Saved on this device: the answer to "did I already download this one". On the
+   left, because the top right corner is where a cross is looked for. */
+.tile__saved {
+  position: absolute; top: 6px; left: 6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-text);
+  font-size: 11px; font-weight: 700;
+}
+
+/* Throw this variant away. Always drawn, never only on hover: a phone has no
+   hover to reveal it with, and a control that appears only under a mouse is one
+   half the devices cannot find. Muted until it is pointed at, so a strip of
+   twelve tiles does not read as a row of crosses. */
+.tile__kill {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 50%; padding: 0; border: 0;
+  display: grid; place-items: center; cursor: pointer;
+  /* A dark disc alone disappears into a dark thumbnail, and the top of a frame is
+     usually dark: it is where the title is drawn. The hairline ring is what makes
+     it read as a control rather than as a stray mark in the picture. */
+  background: rgba(0, 0, 0, .62); color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .28);
+  font-size: 15px; line-height: 1;
+  /* Opacity only. The armed fill below is a safety signal, and a signal that
+     fades in is a signal you can press through before it has finished arriving. */
+  opacity: .7; transition: opacity var(--duration);
+}
+/* The circle is 22px and a finger is not. The hit area is grown outwards without
+   growing the mark, the same trick the sticker handles use. */
+.tile__kill::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
+/* `--danger` is a dark red in the light palette and a pale pink in the dark one,
+   and `--danger-bg` inverts with it. Pairing the two keeps the mark readable on
+   the fill in both, which a hardcoded white would not. */
+.tile__kill:hover, .tile__kill:focus-visible {
+  opacity: 1; background: var(--danger); color: var(--danger-bg);
+}
+
+/* Asked once, then asked again. Same rule as the Delete button under the clip: a
+   dialog is dismissed by habit, a button that has visibly changed its mind is not.
+   The armed cross is filled, wider, and says so in words, because the second press
+   is the one that cannot be taken back. */
+.tile__kill[data-armed="true"] {
+  opacity: 1; background: var(--danger); color: var(--danger-bg);
+  width: auto; height: 22px; padding: 0 9px; border-radius: 11px;
+  font-size: 11px; font-weight: 600; letter-spacing: .2px;
+}
+
+/* A finger needs 44px, but the mark does not have to be 44px to give it: the tile
+   is 116px wide and a quarter of it taken by a cross is a cross that has become the
+   picture. The disc grows a little, the invisible hit area around it does the rest. */
+@media (hover: none) and (pointer: coarse) {
+  .tile__kill { width: 24px; height: 24px; font-size: 16px; opacity: .85; }
+  .tile__kill::before { inset: -10px; }
+  .tile__kill[data-armed="true"] { width: auto; height: 24px; font-size: 11.5px; border-radius: 12px; }
+}
+
+#recent-error { margin: var(--step) 0 0; }
+
+.foot {
+  display: flex; flex-direction: column; gap: 4px;
+  max-width: 1180px; margin: calc(var(--step) * 3) auto 0;
+  color: var(--muted); font-size: 12px;
+}
+
+/* The line under the Recent strip, which the page footer used to carry. A rule
+   above it, because it describes the strip rather than continuing it. */
+.recent__where {
+  margin-top: var(--step); padding-top: var(--step);
+  border-top: 1px solid var(--border);
+}
+
+/* ─────────────────────────  from a tablet up  ───────────────────────── */
+
+@media (min-width: 600px) {
+  body { padding: 0 calc(var(--step) * 3) calc(var(--step) * 5); }
+  .topbar { padding: calc(var(--step) * 3) 0 calc(var(--step) * 2); }
+  .topbar__brand h1 { font-size: 19px; }
+  .topbar__tag { display: block; margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .grid { gap: calc(var(--step) * 2.5); }
+  /* And the cards inside a column, by the same amount. The form is a `.stack` of
+     four cards and the column around it is a grid of four more, and until
+     2026-08-27 they used different tokens: 12 pixels between the first four and 20
+     between the rest, on one unbroken run of identical cards. Reported as "can you
+     equi-space all these sections". A phone leaves both at 12, which is where they
+     already agree. See DECISIONS.md D-070. */
+  .stack { gap: calc(var(--step) * 2.5); }
+
+  .window { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--step); }
+  .window input { text-align: left; padding: 10px 12px; font-size: 15px; }
+  input[type="text"], input[type="url"], input[type="number"], input[type="search"] {
+    font-size: 15px;
+  }
+
+  .segmented { display: inline-grid; grid-template-columns: auto auto; align-self: flex-start; }
+  .segmented__option { padding: 7px 16px; }
+
+  .fieldgroup {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: calc(var(--step) * 2) calc(var(--step) * 3);
+  }
+
+  .chips { justify-content: start; grid-auto-columns: minmax(56px, auto); }
+
+  .button--wide { width: auto; min-width: 168px; }
+  .shortcut { display: block; color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+  .doers { grid-template-columns: 1fr 1fr; }
+
+  .statuslist .detail { flex: 0 1 auto; margin-left: 0; }
+  .caption__box { font-size: 14.5px; }
+  .foot { flex-direction: row; justify-content: space-between; gap: var(--step); flex-wrap: wrap; }
+}
+
+/* ─────────────────────────  two columns  ───────────────────────── */
+
+@media (min-width: 901px) {
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 334px); }
+
+  /* Bigger again where there is room. A GIF is chosen on how it moves, and the
+     phone-sized cell was the complaint. */
+  .shelf[data-source="gifs"] { --cell: 132px; --shelf-height: 340px; }
+
+  /* The paste target is a touch affordance and nothing else: a phone keyboard
+     decides whether to offer its GIF tab from what the focused element accepts,
+     and only a rich text target gets it. With a mouse there is no keyboard GIF
+     tab to reach for, and Ctrl-V already works anywhere on the page, which the
+     hint below it says. So the box goes and the hint stays. D-036, and reported
+     on 2026-08-22 as "not useful in desktop view". */
+  .gifbox__field { display: none; }
+  .gifbox__hint { margin-top: 0; }
+
+  /* Desktop only, deliberately. On a phone this is a row of chips between you and
+     the shelf, and `.env` has already chosen. */
+  .gifpick:not([hidden]) { display: inline-flex; flex-wrap: wrap; }
+  /* Two real columns now. Everything you answer is in the left one, in the order
+     you answer it, and it is as long as it likes; the frame it is all about is in
+     the right one and does not move. The right column is sized to the frame it
+     holds rather than to half the page: the frame is 300px and the card around it
+     is 34 more, so anything past that would be empty space taken from the fields
+     on the left. See DECISIONS.md D-067. */
+  #left {
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--step) * 2.5); align-content: start;
+    grid-column: 1; min-width: 0;
+  }
+
+  /* Stuck to the top of the screen, under the top bar. This is the whole point of
+     the two columns: scroll down to the sticker shelf, or to the buttons that
+     send, and the frame you are deciding about is still in front of you.
+
+     `top` is the top bar's own measured height, in `--topbar`, because that bar
+     is sticky itself and grows a tagline at 600px. The fallback is what it
+     measures on this machine, for the moment before the script has run and for
+     the case where the script never does. */
+  #clipside {
+    display: grid; gap: calc(var(--step) * 2.5); align-content: start;
+    grid-column: 2; min-width: 0;
+    position: sticky; top: calc(var(--topbar, 86px) + var(--step));
+    /* The widest the frame is allowed to be. Raised where the page has reached
+       its full width, at the bottom of this file. */
+    --frame-max: 300px;
+    /* Everything in the card that is not the frame: the summary, the body's
+       padding, the safe-areas row, and the player with its gap. Measured rather
+       than guessed, in Chrome at 1440x773 on 2026-08-27: the card is 179px taller
+       than the frame inside it once the player is showing. The extra 16 is air, so
+       that a card sized to the screen does not sit flush against the bottom of
+       it. Both are ordinary CSS pixels and neither is affected by the zoom. */
+    --chrome: 195px;
+  }
+
+  /* A stuck card taller than the screen is a card with its bottom cut off, and
+     the bottom of this one is the player. So on a short screen the frame takes
+     the height that is left and `aspect-ratio` turns that back into a width,
+     rather than the full width and a player nobody can reach. The floor is 168px,
+     below which the caption band stops being readable and the preview stops being
+     worth looking at; under that the card scrolls with the page like any other. */
+  .phone__screen, .player {
+    max-width: clamp(
+      168px,
+      calc((100vh - var(--topbar, 86px) - var(--chrome)) * 9 / 16),
+      var(--frame-max, 300px));
+  }
+
+  /* The footer goes. All it carries now is where a phone can reach this page, and
+     the health chip at the top of the screen says that already, in a row that
+     names the address and the port together and is two clicks from anywhere. On a
+     laptop the chip is always on screen; on a phone the top of the page is not,
+     which is why the footer stays there. Reported on 2026-08-27 as information
+     shown twice. See DECISIONS.md D-069. */
+  .foot { display: none; }
+}
+
+/* ─────────────────  a bigger frame where the page is full width  ───────────────── */
+
+/* Asked for on 2026-08-27, looking at a 1920 wide screen: the frame was 300px on a
+   page whose right column had 334 and whose left column had 826, and it read small
+   for the thing the whole tool is about.
+
+   360 rather than a little more, for two reasons that agree. It is exactly a third
+   of the 1080 pixel frame, so the preview is an even scale of what is drawn. And it
+   is about the width of a real phone in CSS pixels, which is what "read the caption
+   where the viewer will" is asking for. The word preview is drawn 720 wide, so it
+   is still sampled down rather than up.
+
+   Only from 1180px, which is the grid's own `max-width`: below that the extra 60
+   pixels would come out of the column holding every field, and around 900 that is
+   the difference between two fields on a row and one. See DECISIONS.md D-067. */
+@media (min-width: 1180px) {
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 394px); }
+  #clipside { --frame-max: 360px; }
+}
+
+/* Fingers. The compact controls above suit a pointer; on a touch screen each grows
+   to at least 40px, the smallest target this project allows, with no change to how
+   they look on a computer. */
+@media (pointer: coarse) {
+  .button--small, .button--quiet, .button--danger, .chip, .statuschip { min-height: 40px; }
+  .iconbutton { min-width: 40px; min-height: 40px; }
+}
+
+/* Deleting one of your own stickers asks twice; armed, it says so in colour too. */
+#sticker-forget[data-armed="true"] { border-color: var(--danger); color: var(--danger); }

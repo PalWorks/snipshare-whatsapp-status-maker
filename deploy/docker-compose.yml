@@ -1,0 +1,77 @@
+# SnipShare on one host, self-contained: its own Compose project, network and
+# volumes, and its own front door, a Cloudflare Tunnel, so nothing on the host is
+# shared with it and no port is opened. Everything that names a domain, a person or
+# a key is in `.env` and `tunnel.env` beside this project on the host (mode 600),
+# never here.
+# See DEPLOYMENT.md.
+name: snipshare
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: snipshare:latest
+    container_name: snipshare-app
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      WASTATUS_HOSTED_WORKERS: "1"
+      # The only way in is the tunnel, so the address Cloudflare reports is the
+      # caller's. Without a tunnel in front this must be off.
+      WASTATUS_TRUST_PROXY: "1"
+    volumes:
+      - data:/data
+      - backups:/data/backups
+    networks:
+      - snipshare
+    # Three of the four cores: ffmpeg takes every core it is given, and whatever
+    # else runs on the host keeps one.
+    cpus: "3.0"
+    mem_limit: 3g
+    # Every request is a thread, and a thread is a process id here: this caps what
+    # a flood of slow connections can make it hold, far above any real day.
+    pids_limit: 512
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0
+    container_name: snipshare-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    # Its own file, holding TUNNEL_TOKEN and nothing else: the tunnel has no
+    # business with the app's keys.
+    env_file: ../tunnel.env
+    depends_on:
+      - app
+    networks:
+      - snipshare
+    cpus: "0.5"
+    mem_limit: 256m
+    pids_limit: 128
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  data:
+  backups:
+
+networks:
+  snipshare:

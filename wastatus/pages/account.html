@@ -1,0 +1,332 @@
+<div class="account" id="account" data-token="{{TOKEN}}" data-extension-id="{{EXTENSION_ID}}"
+     data-min-version="{{MIN_VERSION}}">
+
+  <aside class="account__side">
+    <a class="account__back" href="/app">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>
+      Back to {{NAME}}
+    </a>
+    <nav class="account__nav" aria-label="Account sections">
+      <a href="#profile" data-section="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 5v1h16v-1c0-3.3-4.7-5-8-5z"/></svg>
+        Profile</a>
+      <a href="#security" data-section="security">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM9 8V6a3 3 0 0 1 6 0v2z"/></svg>
+        Sign-in and security</a>
+      <a href="#history" data-section="history">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2.1 5L6.7 18.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8z"/></svg>
+        History</a>
+      <a href="#keys" data-section="keys">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm5.6-4A6 6 0 1 0 12.6 14H17v4h4v-4h2v-4z"/></svg>
+        API keys</a>
+      <a href="#feedback" data-section="feedback">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 12h-2v-2h2zm0-4h-2V6h2z"/></svg>
+        Feedback</a>
+      <a href="#extension" data-section="extension">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.7 2.7 0 0 1 0 5.4H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.7 2.7 0 0 1 5.4 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z"/></svg>
+        Extension</a>
+      <a href="#data" data-section="data">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5z"/></svg>
+        Privacy and data</a>
+      <a href="/admin" id="admin-link" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3zm0 8h8v-6H3zm10 0h8V11h-8zm0-18v6h8V3z"/></svg>
+        Admin</a>
+    </nav>
+    <button type="button" class="button account__signout" id="signout">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l1.4-1.4L8.8 13H20v-2H8.8l2.6-2.6L10 7l-5 5zM4 5h7V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7v-2H4z"/></svg>
+      Sign out</button>
+  </aside>
+
+  <div class="account__main">
+    <p class="notice notice--error" id="load-error" role="alert" hidden></p>
+
+    <!-- ── Profile ── -->
+    <section class="account__section" id="profile" aria-labelledby="h-profile">
+      <div class="hero-card">
+        <span class="avatar avatar--large" id="avatar" aria-hidden="true"></span>
+        <div class="hero-card__words">
+          <h1 id="h-profile"><span id="who-name"><span class="skeleton" style="width:8em"></span></span></h1>
+          <p class="muted" id="who-email"><span class="skeleton" style="width:12em"></span></p>
+          <span class="pill" id="who-role" hidden></span>
+        </div>
+      </div>
+
+      <h2 class="group-title">Basic info</h2>
+      <div class="rows card">
+        <div class="row" id="row-name">
+          <span class="row__label">Name</span>
+          <span class="row__value" id="name-value"><span class="skeleton" style="width:9em"></span></span>
+          <button type="button" class="row__action iconbutton" id="name-edit" aria-label="Edit your name" title="Edit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.3V21h3.7l11-11-3.7-3.7zM20.7 7a1 1 0 0 0 0-1.4l-2.3-2.3a1 1 0 0 0-1.4 0l-1.8 1.8 3.7 3.7z"/></svg>
+          </button>
+          <form class="row__edit" id="name-form" novalidate hidden>
+            <label class="sr-only" for="name">Your name</label>
+            <input id="name" type="text" autocomplete="name" maxlength="120" required>
+            <p class="error" id="name-error" role="alert" hidden></p>
+            <div class="row__buttons">
+              <button type="button" class="button button--small" id="name-cancel">Cancel</button>
+              <button type="submit" class="button button--small button--primary" id="name-save">Save</button>
+            </div>
+          </form>
+        </div>
+        <div class="row">
+          <span class="row__label">Email</span>
+          <span class="row__value"><span id="email"><span class="skeleton" style="width:12em"></span></span>
+            <span class="row__note">From your Google account</span></span>
+          <span class="row__action row__lock" title="Managed by Google" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 8V6a3 3 0 0 1 6 0v2z"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <h2 class="group-title">Preferences</h2>
+      <div class="rows card">
+        <div class="row row--wide">
+          <span class="row__label" id="theme-label">Theme</span>
+          <div class="segmented segmented--three" role="radiogroup" aria-labelledby="theme-label" id="theme-choice">
+            <button type="button" role="radio" class="segmented__option" data-theme-value="system">System</button>
+            <button type="button" role="radio" class="segmented__option" data-theme-value="light">Light</button>
+            <button type="button" role="radio" class="segmented__option" data-theme-value="dark">Dark</button>
+          </div>
+        </div>
+        <a class="row row--link" href="#keys">
+          <span class="row__label">GIF search</span>
+          <span class="row__value" id="gif-summary"><span class="skeleton" style="width:8em"></span></span>
+          <span class="row__action row__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9.3 6.7 10.7 5.3 17.4 12l-6.7 6.7-1.4-1.4 5.3-5.3z"/></svg>
+          </span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ── Sign-in and security ── -->
+    <section class="account__section" id="security" aria-labelledby="h-security" hidden>
+      <h1 id="h-security">Sign-in and security</h1>
+      <div class="rows card">
+        <div class="row"><span class="row__label">Signs in with</span><span class="row__value">Google</span></div>
+        <div class="row"><span class="row__label">Access</span><span class="row__value" id="access"><span class="skeleton" style="width:6em"></span></span></div>
+        <div class="row"><span class="row__label">Member since</span><span class="row__value" id="since"><span class="skeleton" style="width:7em"></span></span></div>
+      </div>
+      <h2 class="group-title">Where you are signed in</h2>
+      <p class="muted">Each browser signed in to your account. Sign one out if you do not
+        recognise it.</p>
+      <div class="rows card" id="sessions"><div class="row"><span class="skeleton" style="height:40px;grid-column:1/-1"></span></div></div>
+      <div class="actions"><button type="button" class="button" id="others-out" hidden>Sign out everywhere else</button></div>
+    </section>
+
+    <!-- ── History ── -->
+    <section class="account__section" id="history" aria-labelledby="h-history" hidden>
+      <h1 id="h-history">History</h1>
+      <div class="stats" id="today"></div>
+      <p class="muted" id="resets"></p>
+      <h2 class="group-title">The last 14 days</h2>
+      <div class="days" id="days" role="img" aria-label="Clips made each day"></div>
+      <h2 class="group-title">Clips you made</h2>
+      <p class="muted" id="history-note"></p>
+      <div class="account__list" id="clips"></div>
+    </section>
+
+    <!-- ── API keys ── -->
+    <section class="account__section" id="keys" aria-labelledby="h-keys" hidden>
+      <h1 id="h-keys">API keys</h1>
+      <p class="muted">GIF search uses your own free keys. Add one or both: with both you
+        can search either, or both at once. Keys are stored encrypted, used only for your
+        searches, and never shown again in full.</p>
+
+      <div class="rows card" id="key-rows">
+        <div class="row keyrow" data-provider="giphy">
+          <span class="row__label">GIPHY</span>
+          <span class="row__value"><span class="pill" data-state>checking</span> <span class="row__note" data-hint></span></span>
+          <div class="row__action keyrow__actions">
+            <button type="button" class="button button--small" data-open>Add key</button>
+            <button type="button" class="linkish linkish--danger" data-remove hidden>Remove</button>
+          </div>
+          <form class="row__edit" novalidate hidden>
+            <ol class="hint keyrow__how">
+              <li>Open <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> and sign in.</li>
+              <li>Create an app and choose <strong>API</strong>, not SDK.</li>
+              <li>Copy its API key and paste it below.</li>
+            </ol>
+            <label class="sr-only" for="key-giphy">Your GIPHY key</label>
+            <input id="key-giphy" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your GIPHY key">
+            <p class="error" data-error role="alert" hidden></p>
+            <div class="row__buttons">
+              <button type="button" class="button button--small" data-cancel>Cancel</button>
+              <button type="submit" class="button button--small button--primary" data-save>Save key</button>
+            </div>
+          </form>
+          <div class="row__edit" data-confirm hidden>
+            <p>Remove your GIPHY key? GIF search stops using it.</p>
+            <div class="row__buttons">
+              <button type="button" class="button button--small" data-keep>Keep it</button>
+              <button type="button" class="button button--small button--danger" data-really>Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="row keyrow" data-provider="klipy">
+          <span class="row__label">KLIPY</span>
+          <span class="row__value"><span class="pill" data-state>checking</span> <span class="row__note" data-hint></span></span>
+          <div class="row__action keyrow__actions">
+            <button type="button" class="button button--small" data-open>Add key</button>
+            <button type="button" class="linkish linkish--danger" data-remove hidden>Remove</button>
+          </div>
+          <form class="row__edit" novalidate hidden>
+            <ol class="hint keyrow__how">
+              <li>Open <a href="https://partner.klipy.com/api-keys" target="_blank" rel="noopener">partner.klipy.com</a> and sign in or sign up.</li>
+              <li>On its <strong>API keys</strong> page, create a key.</li>
+              <li>Copy the key and paste it below.</li>
+            </ol>
+            <label class="sr-only" for="key-klipy">Your KLIPY key</label>
+            <input id="key-klipy" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your KLIPY key">
+            <p class="error" data-error role="alert" hidden></p>
+            <div class="row__buttons">
+              <button type="button" class="button button--small" data-cancel>Cancel</button>
+              <button type="submit" class="button button--small button--primary" data-save>Save key</button>
+            </div>
+          </form>
+          <div class="row__edit" data-confirm hidden>
+            <p>Remove your KLIPY key? GIF search stops using it.</p>
+            <div class="row__buttons">
+              <button type="button" class="button button--small" data-keep>Keep it</button>
+              <button type="button" class="button button--small button--danger" data-really>Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="group-title" id="source-label">Search with</h2>
+      <div class="segmented segmented--three" role="radiogroup" aria-labelledby="source-label" id="source">
+        <button type="button" role="radio" class="segmented__option" data-source="giphy">GIPHY</button>
+        <button type="button" role="radio" class="segmented__option" data-source="klipy">KLIPY</button>
+        <button type="button" role="radio" class="segmented__option" data-source="both">Both</button>
+      </div>
+      <p class="hint" id="source-hint"></p>
+    </section>
+
+    <!-- ── Feedback ── -->
+    <section class="account__section" id="feedback" aria-labelledby="h-feedback" hidden>
+      <h1 id="h-feedback">Feedback</h1>
+      <p class="muted">Goes straight to the operator by email. Replies come back to your
+        address.</p>
+      <form class="card account__card" id="feedback-form" novalidate>
+        <div class="field-grid">
+          <div class="field">
+            <label for="fb-name">Your name</label>
+            <input id="fb-name" type="text" autocomplete="name" maxlength="120">
+          </div>
+          <div class="field">
+            <label for="fb-email">Reply to</label>
+            <div class="locked"><input id="fb-email" type="email" readonly tabindex="-1">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6A5 5 0 0 0 7 6v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 8V6a3 3 0 0 1 6 0v2z"/></svg></div>
+          </div>
+        </div>
+        <fieldset class="field">
+          <legend class="label">What is it about?</legend>
+          <div class="chipset" role="radiogroup" id="kind">
+            <button type="button" role="radio" class="chip" aria-checked="true" data-kind="idea">An idea</button>
+            <button type="button" role="radio" class="chip" aria-checked="false" data-kind="problem">A problem</button>
+            <button type="button" role="radio" class="chip" aria-checked="false" data-kind="question">A question</button>
+            <button type="button" role="radio" class="chip" aria-checked="false" data-kind="other">Something else</button>
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="subject">Subject</label>
+          <input id="subject" type="text" maxlength="120" required autocomplete="off"
+                 placeholder="A few words on what this is about">
+          <p class="error" id="subject-error" role="alert" hidden></p>
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" maxlength="3000" rows="6" required
+                    placeholder="What happened, or what would help"></textarea>
+          <div class="field__foot"><p class="error" id="message-error" role="alert" hidden></p>
+            <span class="hint"><span id="count">0</span> / 3000</span></div>
+        </div>
+        <div class="field">
+          <span class="label">Screenshots <span class="muted">(optional, up to 3)</span></span>
+          <div class="dropzone" id="dropzone">
+            <div class="thumbs" id="thumbs"></div>
+            <label class="dropzone__add" id="drop-add">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+              <span>Add a screenshot</span>
+              <input type="file" id="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple class="sr-only">
+            </label>
+            <p class="hint dropzone__hint">Or drop pictures here, or paste one. Each under 4 MB.</p>
+          </div>
+          <p class="error" id="files-error" role="alert" hidden></p>
+        </div>
+        <label class="check" id="include-wrap" hidden>
+          <input type="checkbox" id="include" checked>
+          <span>Include the last failure SnipShare saw: <code id="last-code"></code></span>
+        </label>
+        <p class="error" id="send-error" role="alert" hidden></p>
+        <div class="actions actions--end">
+          <button type="submit" class="button button--primary" id="send">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            Send feedback</button>
+        </div>
+      </form>
+      <div class="card account__card done-card" id="sent" hidden tabindex="-1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+        <h2>Thank you, it is on its way</h2>
+        <p class="muted" id="sent-text"></p>
+        <div class="actions"><button type="button" class="button" id="another">Send another</button></div>
+      </div>
+    </section>
+
+    <!-- ── Extension ── -->
+    <section class="account__section" id="extension" aria-labelledby="h-extension" hidden>
+      <h1 id="h-extension">Extension</h1>
+      <div class="rows card">
+        <div class="row"><span class="row__label">In this browser</span><span class="row__value" id="ext-state">checking</span></div>
+        <div class="row"><span class="row__label">WhatsApp Web</span><span class="row__value" id="wa-state">checking</span></div>
+        <a class="row row--link" href="/install" id="ext-get">
+          <span class="row__label">Get or update</span>
+          <span class="row__value">The download, and the steps to add it to Chrome</span>
+          <span class="row__action row__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9.3 6.7 10.7 5.3 17.4 12l-6.7 6.7-1.4-1.4 5.3-5.3z"/></svg>
+          </span>
+        </a>
+      </div>
+      <p class="hint">Making a clip needs Google Chrome on a computer with the extension.
+        It reads the part you choose in your own browser, at most 20 times an hour, and
+        places a finished clip in WhatsApp Web at most 10 times an hour, never sending it.</p>
+    </section>
+
+    <!-- ── Privacy and data ── -->
+    <section class="account__section" id="data" aria-labelledby="h-data" hidden>
+      <h1 id="h-data">Privacy and data</h1>
+      <div class="rows card">
+        <div class="row row--wide">
+          <span class="row__label">What is kept</span>
+          <ul class="hint account__kept">
+            <li>Your name, Google address and photo, and what you wrote when you asked for access.</li>
+            <li>Your newest <span data-kept></span> clips, and a list of the clips you made in
+              the last <span data-days></span> days.</li>
+            <li>Counts per day for the limits, your stickers, your GIF keys (encrypted), and
+              which kinds of browser you are signed in on.</li>
+          </ul>
+        </div>
+        <a class="row row--link" href="/privacy">
+          <span class="row__label">Privacy page</span>
+          <span class="row__value">Everything, in full</span>
+          <span class="row__action row__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9.3 6.7 10.7 5.3 17.4 12l-6.7 6.7-1.4-1.4 5.3-5.3z"/></svg>
+          </span>
+        </a>
+      </div>
+      <h2 class="group-title">Delete your account</h2>
+      <div class="card account__card account__danger">
+        <p class="hint">Removes your account, clips, history, stickers, keys and counts, at
+          once. This cannot be undone. Type your email address to confirm.</p>
+        <div class="account__row">
+          <input type="text" id="delete-confirm" autocomplete="off" inputmode="email"
+                 aria-label="Your email address, to confirm">
+          <button type="button" class="button button--danger" id="delete" disabled>Delete everything</button>
+        </div>
+        <p class="error" id="delete-error" role="alert" hidden></p>
+      </div>
+    </section>
+  </div>
+</div>
+<script src="/account.js"></script>

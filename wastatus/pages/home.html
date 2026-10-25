@@ -1,0 +1,123 @@
+<section class="hero">
+  <span class="eyebrow">Experimental, by invitation</span>
+  <h1>Share the part of a YouTube video you love, as a WhatsApp Status.</h1>
+  <p class="hero__lead">Choose up to {{MAX_SECONDS}} seconds. {{NAME}} makes a vertical
+    clip that names the video and its channel, with the link to the original in the
+    caption. You post it yourself.</p>
+  <div class="actions">
+    <a class="button button--primary" href="/signup" data-when="signed-out">Request access</a>
+    <a class="button" href="/signin" data-when="signed-out">Sign in</a>
+    <a class="button button--primary" href="/app" data-when="signed-in" hidden>Open {{NAME}}</a>
+  </div>
+  <p class="needs">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+    <span>Making a clip needs Google Chrome on a computer, with the {{NAME}}
+      extension. <a href="/install">How to get it</a></span>
+  </p>
+</section>
+
+<section class="section" aria-labelledby="how">
+  <h2 id="how">How it works</h2>
+  <ol class="steps">
+    <li>
+      <h3>Pick the moment</h3>
+      <p>Paste a YouTube link and say where the part you want starts and ends.</p>
+    </li>
+    <li>
+      <h3>Make the clip</h3>
+      <p>The extension reads that window in your own browser, and {{NAME}} turns it
+        into a 9:16 clip with the title, the channel and the link.</p>
+    </li>
+    <li>
+      <h3>Post it yourself</h3>
+      <p><strong>Load into WhatsApp</strong> opens your Status composer with the clip
+        and its caption. You press Send. The link travels with it.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="section" aria-labelledby="source">
+  <h2 id="source">Made to send people to the source</h2>
+  <p>A clip is a pointer to the original, not a replacement for it.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>Credit in every clip</h3>
+      <p>The video's title and channel are drawn into the clip, and the caption
+        carries the link back to the original.</p>
+    </div>
+    <div class="card">
+      <h3>Not a downloader</h3>
+      <p>It never saves a whole video. Only the part you choose, up to
+        {{MAX_SECONDS}} seconds, rendered into a new frame.</p>
+    </div>
+    <div class="card">
+      <h3>Ads play as usual</h3>
+      <p>Nothing is skipped or blocked. If an ad is showing, the capture waits for
+        it to finish.</p>
+    </div>
+    <div class="card">
+      <h3>Protected video stays protected</h3>
+      <p>Protected (DRM) video cannot be clipped.</p>
+    </div>
+    <div class="card">
+      <h3>You press Send</h3>
+      <p>{{NAME}} never posts for you. It places the clip in your composer; what
+        happens next is your choice.</p>
+    </div>
+    <div class="card">
+      <h3>At a person's pace</h3>
+      <p>{{CLIPS_PER_DAY}} clips a day each, one at a time, and no bulk, scheduled
+        or unattended use.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="need">
+  <h2 id="need">What you need</h2>
+  <ul class="checks">
+    <li><span>A computer with Google Chrome, and the {{NAME}} extension.
+      <a href="/install">Get it</a></span></li>
+    <li><span>WhatsApp Web, signed in, in the same Chrome, to post.</span></li>
+    <li><span>A Google account the operator has let in.
+      <a href="/signup">Request access</a></span></li>
+  </ul>
+  <p class="muted" style="margin-top:12px">On a phone you can watch and save the clips
+    you have made. Making one needs the computer.</p>
+</section>
+
+<section class="section" aria-labelledby="faq">
+  <h2 id="faq">Questions</h2>
+  <details class="faq">
+    <summary>Is this a downloader?</summary>
+    <p>No. It reads only the window you choose, at most {{MAX_SECONDS}} seconds, while
+      the video plays in your own browser, and turns it into a new vertical clip
+      with the source named on it and linked in the caption.</p>
+  </details>
+  <details class="faq">
+    <summary>Does it post for me?</summary>
+    <p>No. It opens the Status composer in your WhatsApp Web with the clip and caption
+      in place. Sending is always your press.</p>
+  </details>
+  <details class="faq">
+    <summary>Is it affiliated with YouTube, Google, WhatsApp or Meta?</summary>
+    <p>No. {{NAME}} is an independent experiment. Those names are used only to say
+      what it works with, and they belong to their owners.</p>
+  </details>
+  <details class="faq">
+    <summary>What do you keep about me?</summary>
+    <p>Your Google name and email, your request, your last few clips, and daily
+      counts that keep the limits. Never your WhatsApp messages. The
+      <a href="/privacy">privacy page</a> has all of it, and you can delete your
+      account from inside {{NAME}} at any time.</p>
+  </details>
+  <details class="faq">
+    <summary>I made a video and want a clip of it removed.</summary>
+    <p>Write to {{CONTACT}} with the link. The clip is removed, and the account that
+      made it can be suspended.</p>
+  </details>
+  <details class="faq">
+    <summary>Why is it by invitation?</summary>
+    <p>It is an experiment on a small server. Letting people in by hand keeps it
+      working for the people using it, and keeps it at a person's pace.</p>
+  </details>
+</section>

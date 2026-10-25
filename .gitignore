@@ -1,0 +1,11 @@
+.venv/
+.env
+MEMORY.private.md
+out/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+dist/
+.publish-deny

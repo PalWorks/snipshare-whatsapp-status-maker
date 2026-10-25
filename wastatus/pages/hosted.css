@@ -1,0 +1,70 @@
+/* SnipShare's additions to the tool page: the extension banner, the account
+   chip, and the two lines under Make the clip. Built from app.css's own
+   tokens, so they follow its light and dark themes. */
+
+.hostbanner {
+  max-width: 1180px; margin: 0 auto calc(var(--step) * 1.5);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  font-size: 14.5px;
+}
+.hostbanner .button { flex: none; }
+
+.accountchip { gap: 8px; text-decoration: none; cursor: pointer; }
+.accountchip__initial {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-text); font-weight: 700; font-size: 12px;
+  transition: transform 140ms, box-shadow 140ms; overflow: hidden;
+}
+.accountchip__initial img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Says "this goes somewhere" before it is pressed: the chip takes the accent, and
+   the initial grows a ring. */
+.accountchip:hover, .accountchip:focus-visible {
+  border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.accountchip:hover .accountchip__initial, .accountchip:focus-visible .accountchip__initial {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  transform: scale(1.06);
+}
+/* Pressed and on its way: the initial gives way to the spinner. */
+.accountchip.is-loading::before { margin-right: 0; }
+.accountchip.is-loading .accountchip__initial { display: none; }
+/* On a phone the chip is the initial alone: the bar is one line. */
+.accountchip > span:last-child { display: none; }
+
+.hostnote {
+  margin: 8px 0 0; color: var(--warn); font-size: 13.5px;
+}
+.hostquota { margin: 6px 0 0; }
+
+@media (min-width: 600px) {
+  .accountchip > span:last-child { display: inline; }
+}
+
+/* The GIF service switch, on a phone too. The local tool keeps it to wide screens,
+   where `.env` has already chosen; here it is the person's own choice between their
+   keys, so it is a compact segmented row of its own under Drawings and GIFs, the
+   three options splitting the width evenly. The radios stay real radios for the
+   keyboard and screen readers; only the circle is hidden. */
+@media (max-width: 900px) {
+  .gifpick:not([hidden]) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    flex-basis: 100%; margin: 6px 0 0; gap: 3px; padding: 3px;
+    background: var(--surface-sunken); border-radius: var(--radius);
+  }
+  .gifpick__choice {
+    position: relative; justify-content: center; min-height: 40px; padding: 0 6px;
+    border-radius: 7px; font-size: 13px; letter-spacing: .02em;
+  }
+  .gifpick__choice input {
+    position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none;
+  }
+  .gifpick__choice:has(input:checked) {
+    background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow);
+  }
+  .gifpick__choice:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+}

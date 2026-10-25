@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Status clip</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header class="bar">
+  <h1>Status clip</h1>
+  <button id="open-settings" class="icon" type="button" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" fill="currentColor"/></svg>
+  </button>
+</header>
+
+<main>
+  <!-- Loading: shown for the moment it takes to ask the tab and the worker. -->
+  <section id="view-loading" class="view">
+    <div class="skeleton"></div><div class="skeleton short"></div>
+  </section>
+
+  <!-- First run: nothing works without a token, so it is the only thing asked. -->
+  <section id="view-setup" class="view" hidden>
+    <h2>Connect to the renderer</h2>
+    <p class="lead">Paste the access token you were given. You only do this once.</p>
+    <form id="setup-form" novalidate>
+      <label for="setup-token">Access token</label>
+      <input id="setup-token" type="password" autocomplete="off" spellcheck="false" required>
+      <p id="setup-error" class="error" role="alert" hidden></p>
+      <details>
+        <summary>Use a different renderer</summary>
+        <label for="setup-server">Renderer address</label>
+        <input id="setup-server" type="url" inputmode="url" autocomplete="url" spellcheck="false">
+      </details>
+      <button id="setup-save" class="primary" type="submit">Connect</button>
+    </form>
+  </section>
+
+  <section id="view-empty" class="view" hidden>
+    <h2>Open a YouTube video</h2>
+    <p class="lead">Then press this button again, and pick the part you want as your Status.</p>
+    <button id="open-youtube" class="primary" type="button">Open YouTube</button>
+  </section>
+
+  <section id="view-reload" class="view" hidden>
+    <h2>Reload this page once</h2>
+    <p class="lead">The extension starts listening when a YouTube page loads. This one was open before it was installed or updated.</p>
+    <button id="reload-tab" class="primary" type="button">Reload the page</button>
+  </section>
+
+  <section id="view-form" class="view" hidden>
+    <p id="form-title" class="video-title"></p>
+    <p id="form-ad" class="note" hidden>An ad is playing. Your clip will start once it finishes.</p>
+    <form id="clip-form" novalidate>
+      <div class="times">
+        <div class="time">
+          <label for="start">Start</label>
+          <div class="with-button">
+            <input id="start" inputmode="decimal" autocomplete="off" placeholder="1:23" aria-describedby="window-note">
+            <button id="start-now" type="button" class="secondary small" aria-label="Start where the video is now">Now</button>
+          </div>
+        </div>
+        <div class="time">
+          <label for="end">End</label>
+          <div class="with-button">
+            <input id="end" inputmode="decimal" autocomplete="off" placeholder="1:53" aria-describedby="window-note">
+            <button id="end-now" type="button" class="secondary small" aria-label="End where the video is now">Now</button>
+          </div>
+        </div>
+      </div>
+      <p id="window-note" class="hint" aria-live="polite"></p>
+
+      <fieldset class="segmented">
+        <legend>Look</legend>
+        <label><input type="radio" name="mode" value="card" checked><span>Card</span></label>
+        <label><input type="radio" name="mode" value="video"><span>Video</span></label>
+      </fieldset>
+      <p id="mode-hint" class="hint">The video's picture, its title, and a wave that moves with the sound.</p>
+
+      <details id="more">
+        <summary>More options</summary>
+        <div id="fill-row">
+          <label for="fill">Behind the video</label>
+          <select id="fill">
+            <option value="blur">A blurred copy of it</option>
+            <option value="black">Black</option>
+          </select>
+        </div>
+        <label for="title-override">Title on the clip</label>
+        <input id="title-override" autocomplete="off" placeholder="The video's own, tidied">
+        <label for="channel-override">Name under it</label>
+        <input id="channel-override" autocomplete="off" placeholder="The channel's">
+        <p class="hint">Leave these empty to use the video's own words.</p>
+      </details>
+
+      <button id="make" class="primary" type="submit">Make my clip</button>
+    </form>
+  </section>
+
+  <section id="view-progress" class="view" hidden>
+    <h2 id="progress-title">Making your clip</h2>
+    <ol class="steps" id="steps">
+      <li data-phase="capturing">Reading it from YouTube</li>
+      <li data-phase="uploading">Sending it to the renderer</li>
+      <li data-phase="rendering">Making the clip</li>
+      <li data-phase="downloading">Bringing it back</li>
+    </ol>
+    <div class="meter" role="progressbar" aria-labelledby="progress-detail" aria-valuemin="0" aria-valuemax="100">
+      <div id="meter-fill"></div>
+    </div>
+    <p id="progress-detail" class="hint" aria-live="polite"></p>
+    <p class="hint">You can close this. It carries on, and the button shows a tick when it is ready.</p>
+    <button id="stop" class="secondary" type="button">Stop</button>
+  </section>
+
+  <section id="view-ready" class="view" hidden>
+    <video id="preview" controls playsinline preload="metadata"></video>
+    <p class="hint">Caption: <span id="caption"></span></p>
+    <p id="too-big" class="note" hidden></p>
+    <button id="load" class="primary" type="button">Load into WhatsApp</button>
+    <p id="load-result" class="note" role="status" hidden></p>
+    <div class="row">
+      <button id="save" class="secondary" type="button">Save the video</button>
+      <button id="another" class="secondary" type="button">Make another</button>
+    </div>
+  </section>
+
+  <section id="view-failed" class="view" hidden>
+    <h2>That did not work</h2>
+    <p id="failed-error" class="error" role="alert"></p>
+    <button id="retry" class="primary" type="button">Try again</button>
+    <button id="start-over" class="secondary" type="button">Start over</button>
+  </section>
+
+  <section id="view-settings" class="view" hidden>
+    <h2>Settings</h2>
+    <form id="settings-form" novalidate>
+      <label for="settings-token">Access token</label>
+      <input id="settings-token" type="password" autocomplete="off" spellcheck="false">
+      <label for="settings-quality">Video quality</label>
+      <select id="settings-quality">
+        <option value="hd720">720p, quicker to send (recommended)</option>
+        <option value="hd1080">1080p, sharper, twice the data</option>
+        <option value="auto">Whatever YouTube is playing</option>
+      </select>
+      <p class="hint">Only Video clips use this. Card clips send only the sound.</p>
+      <label for="settings-server">Renderer address</label>
+      <input id="settings-server" type="url" inputmode="url" spellcheck="false">
+      <p id="settings-result" class="note" role="status" hidden></p>
+      <button id="settings-save" class="primary" type="submit">Save</button>
+      <button id="settings-back" class="secondary" type="button">Back</button>
+    </form>
+  </section>
+</main>
+<script src="config.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

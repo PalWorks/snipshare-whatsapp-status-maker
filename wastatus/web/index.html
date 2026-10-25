@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}}</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+{{HEAD}}
+<script>
+  /* Before the first paint, so a page you have set to light does not flash dark
+     on its way in. The button at the top right writes this value. */
+  try {
+    var choice = localStorage.getItem("wastatus.theme");
+    if (choice === "light" || choice === "dark") {
+      document.documentElement.dataset.theme = choice;
+    }
+  } catch (e) { /* private mode */ }
+</script>
+</head>
+<body data-token="{{TOKEN}}" {{BODY_DATA}}>
+
+<!-- ─────────────────────────  top bar  ─────────────────────────
+     One line on a phone. The three checks that used to sit here as three pills
+     are behind one chip, because on a 360 pixel screen they were the first
+     third of the page and they are only interesting when one of them is wrong. -->
+<header class="topbar">
+  <div class="topbar__brand">
+    <img class="mark" src="/favicon.svg" alt="" width="26" height="26">
+    <div class="topbar__words">
+      <h1>{{BRAND}}</h1>
+      <p class="topbar__tag">{{TAGLINE}}</p>
+    </div>
+  </div>
+
+  <div class="topbar__controls">
+    <!-- System, then light, then dark, then round again. One button, because the
+         choice is made once and then forgotten. -->
+    <button type="button" class="iconbutton" id="theme" title="Theme: system"
+            aria-label="Theme: system">
+      <svg id="theme-system" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-6v2h3v2H7v-2h3v-2H4a1 1 0
+                 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v7h14V7H5z"/>
+      </svg>
+      <svg id="theme-light" viewBox="0 0 24 24" aria-hidden="true" hidden>
+        <path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5 2 3h-4l2-3zm0 20-2-3h4l-2
+                 3zM2 12l3-2v4l-3-2zm20 0-3 2v-4l3 2zM5 5l3.5.5L6.4 8.6 5 5zm14
+                 14-3.5-.5 2.1-3.1L19 19zM19 5l-1.4 3.6-2.1-3.1L19 5zM5 19l1.4-3.6
+                 2.1 3.1L5 19z"/>
+      </svg>
+      <svg id="theme-dark" viewBox="0 0 24 24" aria-hidden="true" hidden>
+        <path d="M12.7 2a9 9 0 1 0 9.3 9.3 7 7 0 0 1-9.3-9.3z"/>
+      </svg>
+    </button>
+
+    <button type="button" class="statuschip" id="status-chip"
+            aria-expanded="false" aria-controls="status-panel">
+      <span class="statuschip__dot" id="status-dot"></span>
+      <span id="status-text">checking</span>
+      <svg class="statuschip__caret" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 10l5 5 5-5z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="statuspanel" id="status-panel" hidden>
+  <ul class="statuslist" id="status-list"></ul>
+  <p class="hint" id="status-where"></p>
+</div>
+
+<!-- Every section is its own card, and every card folds. A collapsed one still
+     says what is inside it, in the value on the right of its header. -->
+<main class="grid">
+
+  <!-- On a laptop this is the column that scrolls: everything you answer, in the
+       order you answer it, ending with the buttons that send it and the clips you
+       sent before. The frame it is all about does not move, in the column beside.
+       On a phone this wrapper is `display: contents` and the cards flow in reading
+       order. See DECISIONS.md D-067. -->
+  <div class="col" id="left">
+  <form id="form" class="stack" novalidate>
+
+    <!-- ─────────  the clip  ───────── -->
+    <details class="accordion" id="sec-clip" open>
+      <summary>
+        <span class="accordion__title">The clip</span>
+        <span class="accordion__value" id="val-clip"></span>
+        <button type="button" class="linkbutton" id="clear">Clear</button>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+        <div class="field">
+          <label for="url">YouTube link</label>
+          <div class="input-clear">
+            <input id="url" name="url" type="url" inputmode="url" autocomplete="off"
+                   placeholder="https://youtu.be/..." required autofocus>
+            <button type="button" class="input-clear__button" id="url-clear"
+                    aria-label="Clear the link" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59
+                         6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+          <p class="hint">A <code>?t=</code> in the link is used as the start.</p>
+        </div>
+
+        <!-- Start, length and end on one row. They are one decision, so they read
+             as one control rather than as three questions down the page. -->
+        <div class="field">
+          <span class="label">Window</span>
+          <div class="window">
+            <div class="window__cell">
+              <label for="start">Start</label>
+              <input id="start" name="start" type="text" inputmode="text"
+                     autocapitalize="off" autocorrect="off" spellcheck="false"
+                     placeholder="0:20" autocomplete="off">
+            </div>
+            <div class="window__cell">
+              <label for="duration">Length</label>
+              <input id="duration" name="duration" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="30" value="30">
+            </div>
+            <div class="window__cell">
+              <label for="end">End</label>
+              <input id="end" name="end" type="text" inputmode="text"
+                     autocapitalize="off" autocorrect="off" spellcheck="false"
+                     placeholder="0:50" autocomplete="off">
+            </div>
+          </div>
+          <div class="chips" role="group" aria-label="Common lengths">
+            <button type="button" class="chip" data-duration="15">15s</button>
+            <button type="button" class="chip" data-duration="30">30s</button>
+            <button type="button" class="chip" data-duration="60">60s</button>
+            <button type="button" class="chip" data-duration="90">90s</button>
+          </div>
+          <p class="hint">Length is in seconds. Set the length or the end, and the
+            other follows.</p>
+        </div>
+      </div>
+    </details>
+
+    <!-- ─────────  look  ───────── -->
+    <details class="accordion" id="sec-look">
+      <summary>
+        <span class="accordion__title">Look</span>
+        <span class="accordion__value" id="val-look">Artwork card</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <!-- Three questions, and the first one governs the other two: what the clip is
+           made from, then how that thing looks. The rule under the first is the
+           grouping, and the two below it sit side by side wherever there is room,
+           because stacking three label-control-hint blocks made a column of six
+           lines of small print that read as one wall. Reported on 2026-08-27 as
+           "too congested". -->
+      <div class="accordion__body">
+        <div class="field">
+          <label id="mode-label">Made from</label>
+          <div class="segmented" role="radiogroup" aria-labelledby="mode-label">
+            <button type="button" role="radio" aria-checked="true" class="segmented__option"
+                    data-mode="card">Artwork card</button>
+            <button type="button" role="radio" aria-checked="false" class="segmented__option"
+                    data-mode="video">Video frames</button>
+          </div>
+          <p class="hint" id="mode-hint">
+            The album art on a blurred background, with a waveform. Audio only.
+          </p>
+        </div>
+
+        <div class="fieldgroup">
+          <!-- What goes behind the frames. Video mode only: the card composes its own
+               background, scrim and shadow together, and swapping that for black is a
+               different design rather than a setting. It lives here rather than beside
+               Safe areas because it changes the clip, and Safe areas changes only the
+               preview: two toggles that look alike and act differently teach the wrong
+               thing. See D-059. -->
+          <div class="field" id="fill-field" hidden>
+            <label for="fill-blur" id="fill-label">Background</label>
+            <div class="segmented" role="radiogroup" aria-labelledby="fill-label">
+              <button type="button" role="radio" aria-checked="true" id="fill-blur"
+                      class="segmented__option" data-fill="blur">Blurred video</button>
+              <button type="button" role="radio" aria-checked="false" id="fill-black"
+                      class="segmented__option" data-fill="black">Black</button>
+            </div>
+            <p class="hint" id="fill-hint"></p>
+          </div>
+
+          <!-- Where the picture goes: the video's frames in one mode, the artwork
+               panel in the other. Fitted is what both have always been, sized into
+               the room the words leave. Placed hands that over, in the same
+               fractions a sticker uses. It needs a clip of this mode's own kind on
+               screen, because the box's shape is that picture's shape and nothing
+               else knows it. See D-061 and D-062. -->
+          <div class="field" id="picture-field">
+            <label id="picture-label">Picture</label>
+            <div class="segmented" role="radiogroup" aria-labelledby="picture-label">
+              <button type="button" role="radio" aria-checked="true" id="picture-fitted"
+                      class="segmented__option" data-picture="fitted">Fitted</button>
+              <button type="button" role="radio" aria-checked="false" id="picture-placed"
+                      class="segmented__option" data-picture="placed">Placed</button>
+            </div>
+            <p class="hint" id="picture-hint"></p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- ─────────  words  ───────── -->
+    <details class="accordion" id="sec-words">
+      <summary>
+        <span class="dotmark" id="dot-words" hidden></span>
+        <span class="accordion__title">Words on the card</span>
+        <!-- In the header of the card it fills, so it can be reached without
+             opening it, and so the answer lands in the value beside it. It acts on
+             the link in the card above; that one keeps only its clear cross. -->
+        <button type="button" class="headeraction" id="words-fetch"
+                title="Fetch the title and second line from the video"
+                aria-label="Fetch the title and second line from the video">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-8 8s3.58 8
+                     8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31
+                     0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/>
+          </svg>
+        </button>
+        <span class="accordion__value" id="val-words">from the video</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" name="title" type="text" placeholder="taken from the video"
+                 autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="channel">Second line</label>
+          <input id="channel" name="channel" type="text" placeholder="the artist or channel"
+                 autocomplete="off">
+        </div>
+        <p class="alert" id="words-error" role="alert" hidden></p>
+        <p class="hint">
+          Left empty, these are read from the video when the clip is made. The arrow
+          in this card's header asks for them now instead, so they can be corrected
+          before the clip rather than after it; it replaces whatever is in the two
+          boxes. Either way they are drawn into the video, so changing them means
+          making the clip again: the preview above follows your typing, and the file
+          on disk keeps the old words until you press <strong>Make the clip</strong>.
+          The caption under the preview is text, and edits there are instant.
+        </p>
+      </div>
+    </details>
+
+    <!-- ─────────  extras  ───────── -->
+    <details class="accordion" id="sec-extras">
+      <summary>
+        <span class="accordion__title">Extras</span>
+        <span class="accordion__value" id="val-extras">waveform on</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+        <!-- Top to bottom, in the order they appear on the frame. Three boxes
+             that each put a line somewhere used to be listed in the order they
+             were built, so finding the one you wanted meant reading all three.
+             The names say where the line lands, for the same reason. -->
+        <div class="field">
+          <!-- The band under WhatsApp's own header, which was empty air in video
+               mode. Its own field rather than a placement for the label, because a
+               reel wants both: a hook at the top and the line that introduces the
+               title at the bottom. -->
+          <label for="topline">Text at the top</label>
+          <input id="topline" name="topline" type="text" placeholder="off by default"
+                 autocomplete="off">
+          <p class="hint" id="topline-hint">Under WhatsApp's own header, above the
+            picture. The picture makes room for it.</p>
+        </div>
+        <div class="field">
+          <!-- One name in both modes now. It used to follow the mode, because it
+               sits above the card in one and above the words in the other, and
+               both of those are above the title: which is what it is called. -->
+          <label for="eyebrow">Text above title</label>
+          <input id="eyebrow" name="eyebrow" type="text" placeholder="off by default"
+                 autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="footer">Text below sub-title</label>
+          <input id="footer" name="footer" type="text" placeholder="off by default"
+                 autocomplete="off">
+        </div>
+        <!-- Free text: a line that goes where you put it, rather than where the
+             layout puts it. The picture of the line is drawn by the server, in the
+             same Pillow the renderer uses, so the box you drag is the pixels that
+             get burned in. One box does both jobs: nothing selected and it inserts
+             another, a line selected and it retypes that one. -->
+        <div class="field">
+          <label for="text-line">Free text</label>
+          <div class="field__row">
+            <input id="text-line" type="text" maxlength="120" autocomplete="off"
+                   placeholder="a line to drop on the frame">
+            <button type="button" class="button button--small" id="text-add">
+              Insert
+            </button>
+          </div>
+          <p class="hint">Goes on the frame where you drag it. Pull
+            the corner to size it, the cross to remove it. Insert as many as you
+            like.</p>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="wave" checked>
+          <span>Waveform strip</span>
+        </label>
+      </div>
+    </details>
+
+  </form>
+
+    <details class="accordion" id="sec-stickers">
+      <summary>
+        <span class="dotmark" id="dot-stickers" hidden></span>
+        <span class="accordion__title">Stickers</span>
+        <span class="accordion__value" id="val-stickers">none</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+        <!-- Two sources, not one box that mixes them: 4,495 drawings and a GIF
+             service answer different needs, and merged results would bury the
+             drawings. Hidden entirely unless a GIF provider is configured. -->
+        <div class="chips chips--source" id="sticker-source" role="group"
+             aria-label="Where to search" hidden>
+          <button type="button" class="chip" data-source="drawings"
+                  aria-pressed="true">Drawings</button>
+          <button type="button" class="chip" data-source="gifs"
+                  aria-pressed="false">GIFs</button>
+
+          <!-- Which service answers the search, at the right end of the row that
+               turned the GIF shelf on. It used to be a second row of pills below
+               this one, which read as another toggle of the same standing when it
+               is a detail of the one above: same shape, same weight, same colour,
+               two decisions. Radios say sub-choice without a word of explanation.
+
+               Drawn only while the GIF shelf is showing, only when more than one
+               key is configured, and only on a wide screen: on a phone this is
+               furniture in front of the thing you came for, and `.env` already
+               chose. It switches for this session and never rewrites `.env`. -->
+          <div class="gifpick" id="gif-provider" role="radiogroup"
+               aria-label="Which GIF service to search" hidden></div>
+        </div>
+
+        <div class="stickers__bar">
+          <div class="input-clear input-clear--search">
+            <input type="search" id="sticker-search" placeholder="Search: om, flower, music"
+                   autocomplete="off" aria-label="Search stickers">
+          </div>
+          <button type="button" class="button button--quiet" id="sticker-upload">Upload</button>
+          <!-- GIF belongs here: the server has stored animated stickers since T-019 and
+               reports them as `moving`, but this filter predates that and hid them in the
+               file dialog, so the only way in was to switch the picker to "All files".
+               Nothing else had to change; the upload handler never filtered by type. -->
+          <input type="file" id="sticker-file"
+                 accept="image/png,image/webp,image/jpeg,image/gif" multiple hidden>
+        </div>
+
+        <div class="chips chips--wrap" id="sticker-tags" role="group"
+             aria-label="Sticker suggestions">
+          <button type="button" class="chip" data-tag="">Popular</button>
+          <button type="button" class="chip" data-tag="flower">Flowers</button>
+          <button type="button" class="chip" data-tag="music">Music</button>
+          <button type="button" class="chip" data-tag="hand">Hands</button>
+          <button type="button" class="chip" data-tag="heart">Hearts</button>
+          <button type="button" class="chip" data-tag="star">Stars</button>
+        </div>
+
+        <p class="alert" id="sticker-error" role="alert" hidden></p>
+
+        <!-- A box that can receive a picture, which a plain input cannot. A phone
+             keyboard offers its GIF tab against a rich text target, so this is the
+             thing to tap before reaching for it. It never keeps what lands in it. -->
+        <div class="gifbox">
+          <div class="gifbox__field" id="gif-drop" contenteditable="true" role="textbox"
+               aria-label="Paste a GIF or a picture here"
+               data-empty="Tap here, then pick a GIF on your keyboard"></div>
+          <p class="gifbox__hint" id="gif-hint">Or copy any picture and paste it
+            anywhere on this page.</p>
+        </div>
+
+        <div class="shelf" id="shelf" data-source="drawings"></div>
+
+        <div class="picked" id="picked" hidden>
+          <label class="picked__slider">Size
+            <input type="range" id="sticker-size" min="3" max="90" step="1" value="20">
+          </label>
+          <label class="picked__slider">Turn
+            <input type="range" id="sticker-turn" min="-180" max="180" step="1" value="0">
+          </label>
+          <button type="button" class="button button--danger button--small" id="sticker-remove">
+            Remove
+          </button>
+          <!-- Only on one of your own stickers or picked GIFs: takes it off this
+               frame and out of your stickers for good, after a second press. -->
+          <button type="button" class="button button--quiet button--small" id="sticker-forget" hidden>
+            Delete from my stickers
+          </button>
+        </div>
+
+        <!-- Once a clip has been made the stickers are in its pixels, so the
+             draggable layer is put away rather than left floating over frames it
+             can no longer move. This is the way back to it: it does not undo
+             anything, it only brings the handles back so the next clip can place
+             them differently. -->
+        <button type="button" class="button button--quiet button--small"
+                id="sticker-edit" hidden>Place them again</button>
+
+        <!-- The credit rides on the end of the hint line rather than taking a
+             line of its own. It is required by both providers' terms and cannot
+             go away, but a fourth stacked line of grey text was reading as part of
+             the instructions. Present only while their results are on show. -->
+        <div class="stickers__foot">
+          <p class="hint" id="sticker-hint">Pick one, then drag it on the frame.</p>
+          <p class="finemark" id="gif-credit" hidden></p>
+        </div>
+      </div>
+    </details>
+
+    <!-- ─────────  post it  ───────── -->
+    <details class="accordion" id="sec-post" open>
+      <summary>
+        <span class="accordion__title">Post it</span>
+        <span class="accordion__value" id="val-post">nothing yet</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+
+        <!-- ─────────  make it  ─────────
+             The button you came to press, at the top of the panel the clip lands
+             in: press it here, and the result appears directly below. `form=` is
+             what keeps it a submit button now that it sits outside the form, so
+             the existing handler and Ctrl+Enter both still reach it. -->
+        <div class="makeblock">
+          <p class="alert" id="error" role="alert" hidden></p>
+
+          <div class="makerow" id="makerow">
+            <button type="submit" form="form" class="button button--primary"
+                    id="make">Make the clip</button>
+            <button type="button" class="button button--quiet" id="stop" hidden>Stop</button>
+          </div>
+          <p class="shortcut" id="shortcut" aria-hidden="true">&#8984;/Ctrl + Enter</p>
+          <!-- Why the button above is grey. It takes the shortcut's place rather
+               than sitting under it, so the block does not change height. -->
+          <p class="shortcut" id="make-note" role="status" hidden>This clip is what
+            the preview shows. Change anything to make it again.</p>
+
+          <div class="progress" id="progress" hidden aria-live="polite">
+            <ol class="steps" id="steps"></ol>
+            <div class="progress__track"><div class="progress__bar" id="progress-bar"></div></div>
+            <div class="progress__meta">
+              <span id="progress-message">starting</span>
+              <span class="progress__elapsed" id="progress-elapsed">0s</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint" id="nothing-yet">Make a clip and it lands here, ready to send.</p>
+
+        <div id="result" hidden>
+          <div class="clip">
+            <strong class="clip__name" id="result-name">&nbsp;</strong>
+            <div class="clip__facts">
+              <span class="badge" id="result-mode"></span>
+              <span class="muted" id="result-meta"></span>
+            </div>
+          </div>
+
+          <!-- The caption is its own labelled box, so there is no doubt about which
+               text on this page is the caption. What is drawn over the frame above
+               is an echo of this box, in the place WhatsApp will put it. -->
+          <div class="caption">
+            <div class="caption__bar">
+              <label class="label" for="caption">Caption, sent with the video</label>
+              <span class="caption__state" id="caption-state"></span>
+            </div>
+            <div class="caption__field">
+              <div class="caption__box" id="caption" contenteditable="plaintext-only"
+                   role="textbox" aria-multiline="true" spellcheck="false"
+                   data-placeholder="Add a caption"></div>
+              <button type="button" class="caption__copy" id="copy"
+                      title="Copy the caption" aria-label="Copy the caption">
+                <svg viewBox="0 0 24 24" aria-hidden="true" id="copy-icon">
+                  <path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2
+                           2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" id="copy-done" hidden>
+                  <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="hint">Tappable for everyone except you on the phone that
+              posted it.</p>
+          </div>
+
+          <p class="alert" id="post-error" role="alert" hidden></p>
+          <p class="notice" id="post-done" hidden></p>
+
+          <!-- The clip below is pixels, and the form above may have moved on since
+               it was made. Said here, next to the buttons that would send the older
+               take, rather than only in the Stickers card where it was missed on
+               2026-08-25. See D-056. -->
+          <p class="alert alert--soft" id="post-stale" role="status" hidden></p>
+
+          <!-- Four things you can do, each saying what it does. Which one is filled
+               depends on the device that opened the page, see D-026. -->
+          <div class="doers">
+            <div class="doer" id="doer-download">
+              <a class="button" id="download" download href="#">
+                <span id="download-text">Download</span>
+              </a>
+              <span class="doer__what">Saves the mp4 on this device. Then post it
+                yourself in WhatsApp, with the caption copied above.</span>
+            </div>
+
+            <div class="doer" id="doer-load">
+              <button type="button" class="button" id="load">Load into WhatsApp</button>
+              <span class="doer__what" id="load-what">Opens the Status composer with
+                the clip and the caption in place. You press Send there.</span>
+            </div>
+
+            <div class="doer" id="doer-send">
+              <button type="button" class="button" id="send">Send it for me</button>
+              <span class="doer__what">Posts it to Status (Contacts) now. Nothing
+                else to press.</span>
+            </div>
+
+            <div class="doer" id="doer-delete">
+              <button type="button" class="button button--danger" id="delete">Delete</button>
+              <span class="doer__what">Removes this clip and its files from the
+                output folder. Two presses.</span>
+            </div>
+          </div>
+
+          <label class="check check--inline check--follow">
+            <input type="checkbox" id="follow-up">
+            <span>Also post the link as its own text Status, when sending</span>
+          </label>
+          <p class="hint" id="post-hint"></p>
+        </div>
+      </div>
+    </details>
+
+  <!-- ─────────  recent  ───────── -->
+  <details class="accordion" id="sec-recent" open>
+    <summary>
+      <span class="accordion__title">Recent</span>
+      <span class="accordion__value" id="val-recent"></span>
+      <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+      </svg>
+    </summary>
+    <div class="accordion__body">
+      <div class="recent__list" id="recent"></div>
+      <p id="recent-error" hidden></p>
+      <!-- Where these clips are and how many are kept, under the strip they are
+           about. It was in the page footer, which is a long way from the thing it
+           describes and, on a laptop, below the fold of a column that scrolls.
+           See DECISIONS.md D-069. -->
+      <p class="hint recent__where" id="foot-out"></p>
+    </div>
+  </details>
+  </div>
+
+  <!-- The answer, and nothing else. It is stuck to the top of the screen on a
+       laptop, so that a sticker dragged from a shelf halfway down the page lands
+       on a frame you can still see. -->
+  <div class="stack" id="clipside">
+
+    <!-- ─────────  preview  ───────── -->
+    <details class="accordion" id="sec-preview" open>
+      <summary>
+        <span class="accordion__title">Preview</span>
+        <span class="accordion__value" id="val-preview">Safe areas on</span>
+        <svg class="accordion__caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.6 8.6L12 13.2 7.4 8.6 6 10l6 6 6-6z"/>
+        </svg>
+      </summary>
+      <div class="accordion__body">
+        <div class="card__header">
+          <span class="hint">What the viewer sees</span>
+          <label class="check check--inline">
+            <input type="checkbox" id="guides" checked>
+            <span>Safe areas</span>
+          </label>
+        </div>
+
+        <figure class="phone" id="phone" data-guides="on">
+          <div class="phone__screen" id="screen">
+            <video id="preview" playsinline preload="metadata" hidden></video>
+            <!-- The words as they will be drawn, over the clip's own picture. It
+                 covers the video only while the words differ from the ones baked
+                 into it, so what you are looking at is never a lie about the file
+                 on disk. Playing does not take it down: it is cut open over the
+                 part of the frame that moves, so the clip plays inside its own new
+                 wording rather than the words swapping back on play.
+                 Pillow redraws it in well under a second; the clip itself
+                 takes 30 to 66. See TASKS.md T-036. -->
+            <img class="phone__wordshot" id="wordshot" alt="" hidden>
+            <div class="phone__empty" id="empty">
+              <p>Your clip appears here.</p>
+              <p class="hint">Play it, and read the caption where the viewer will.</p>
+            </div>
+            <!-- The picture's own box, under the stickers because the stickers are
+                 drawn over the picture, and over the still because it is the thing
+                 being placed on it. Deliberately not a `.decal`: the sticker
+                 gestures find their target with `closest(".decal")`, and the
+                 picture is not one of those. -->
+            <div class="framebox" id="picture-box" hidden tabindex="0"
+                 role="group" aria-label="The video picture">
+              <button type="button" class="framebox__grip" id="picture-grip"
+                      tabindex="-1" aria-label="Resize the picture"></button>
+            </div>
+            <div class="decals" id="decals"></div>
+            <div class="phone__zone phone__zone--top"><span>WhatsApp header</span></div>
+            <div class="phone__zone phone__zone--bottom"><span>WhatsApp caption</span></div>
+            <p class="phone__ahead" id="wordshot-note" hidden></p>
+          <div class="phone__caption" id="caption-band" hidden>
+              <div class="phone__caption-text" id="caption-echo"></div>
+            </div>
+          </div>
+
+          <div class="player" id="player" hidden>
+            <button type="button" class="player__button" id="play" aria-label="Play">
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="icon-play">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="icon-pause" hidden>
+                <path d="M7 5h4v14H7zm6 0h4v14h-4z"/>
+              </svg>
+            </button>
+            <input type="range" class="player__seek" id="seek" min="0" max="100" step="0.05"
+                   value="0" aria-label="Position">
+            <span class="player__time" id="time">0:00</span>
+          </div>
+        </figure>
+      </div>
+    </details>
+
+  </div>
+
+</main>
+
+<!-- The phone's footer. On a laptop this is folded away entirely: the health chip
+     at the top of the page already answers "can my phone reach this", in a row that
+     names the address and the port together. On a phone the top of the page is a
+     long way from the bottom, which is where you are when you want it. D-069. -->
+<footer class="foot">
+  <span id="foot-reach">Loopback only. Nothing is sent until you press Send.</span>
+</footer>
+
+{{SCRIPTS}}
+<script src="/app.js"></script>
+</body>
+</html>
