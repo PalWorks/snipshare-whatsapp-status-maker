@@ -5,6 +5,34 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-103: The extension is distributed from the site only, not the Chrome Web Store
+
+**Date:** 2026-10-26T01:53:58+05:30
+**Status:** decided by the owner
+
+**Context.** The owner asked whether the extension could go on the Chrome Web Store.
+The Store's program policies, read on this date, say: "Do not encourage, facilitate,
+or enable the unauthorized access, download, or streaming of copyrighted content or
+media", and "Repeated infringement of intellectual property rights, including
+copyright, will also result in account termination." Cutting a clip from somebody
+else's YouTube video is that use, and a rejection would count against the PalWorks
+developer account, not only this extension. Loading a clip into WhatsApp without
+pressing Send keeps it inside the rule against sending messages for the user (D-020).
+
+**Decision:** keep installing it unpacked from the site's `/install` page, with the
+zip's SHA-256 shown there (D-101). No Store submission, listed or unlisted.
+
+**Alternatives rejected for now:** submitting it as it is, unlisted (reviewed under
+the same policies; likely rejection and a strike on the account); a smaller Store
+extension that only loads people's own uploads into WhatsApp (safe, but without the
+reason people use SnipShare); an enterprise policy install (only for browsers an
+organisation manages).
+
+**Revisit when** SnipShare gains a source that is not somebody else's copyrighted
+video, such as a person's own recordings, or the Store's policy changes.
+
+---
+
 ## D-102: The app's containers reach the public internet and nothing else
 
 **Date:** 2026-10-26T01:29:37+05:30

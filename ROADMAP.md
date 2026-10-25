@@ -116,7 +116,8 @@ Google sign-in after the owner approves a request, the extension reading the vid
 and loading WhatsApp for the page. DECISIONS.md D-087 to D-093,
 [docs/hosted-page.md](docs/hosted-page.md). Next on it, each the owner's call: the
 extension naming protected video before trying (Table HP-1), PostHog once there are
-ten people, the Chrome Web Store if its policy ever allows it.
+ten people. The Chrome Web Store is ruled out for now (D-103, 2026-10-26T01:53:58+05:30): the
+extension is distributed from the site only.
 
 ## Phase 4: browser capture
 
