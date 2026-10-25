@@ -2,13 +2,35 @@
 
 Human readable history. Newest first.
 
+## 2026-10-25, fifty-fifth pass
+
+Written **2026-10-25T22:43:40+05:30**.
+
+### The repository's new name
+
+The public repository is `PalWorks/snipshare-whatsapp-status-maker`, "SnipShare:
+WhatsApp Status Maker from Social Media Snippets". This folder now follows its
+history; the old private history is kept as the local branch `private-history`.
+
+### A second security pass
+
+D-101. The extension you install is now built into the server's image, where nothing
+running on the server can replace it, and `/install` shows its SHA-256 so a download
+can be checked. Requests that could be read two ways are refused. Sign-in is tied to
+the Google account that first used an address, and you will be asked to sign in once
+more. The extension's permissions end two hours after they are given, however busy.
+GIFs come only from GIPHY's and KLIPY's own servers. Pictures that claim to be huge
+are refused before they are opened. More protective headers, and no email addresses
+in the server's log. A capture after a long ad is no longer given up on while Chrome
+holds the background tab back.
+
 ## 2026-10-25, fifty-fourth pass
 
 Written **2026-10-25T15:11:42+05:30**.
 
 ### Ready to be public
 
-D-099. The repository is prepared for publication as a fresh copy, `PalWorks/snipshare`.
+D-099. The repository is prepared for publication as a fresh copy, `PalWorks/snipshare-whatsapp-status-maker`.
 The licence is now **AGPL-3.0-only with a paid commercial licence**
 ([COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)); the packages it uses and their
 terms are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); contributions need a

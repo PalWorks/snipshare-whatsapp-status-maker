@@ -21,7 +21,7 @@ only to say what it works with, and belong to them. **Sending is always your own
 press:** the tool loads WhatsApp's Status composer and stops, unless you ask it to
 send from your own machine.
 
-Source: [github.com/PalWorks/snipshare](https://github.com/PalWorks/snipshare). The
+Source: [github.com/PalWorks/snipshare-whatsapp-status-maker](https://github.com/PalWorks/snipshare-whatsapp-status-maker). The
 Python package and the command are still called `wastatus`, the project's working
 name.
 
@@ -226,7 +226,7 @@ Prerequisites: Python 3, `ffmpeg` on PATH, git, and node 20 or newer. On macOS:
 `brew install ffmpeg node git`.
 
 ```bash
-git clone https://github.com/PalWorks/snipshare.git
+git clone https://github.com/PalWorks/snipshare-whatsapp-status-maker.git
 cd snipshare
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt

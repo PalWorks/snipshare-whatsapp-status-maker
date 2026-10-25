@@ -153,7 +153,7 @@ product you do not release under the AGPL. Ask by opening an issue titled
 
 The hosted site runs aksharamukha, which is AGPL-3.0, for people over a network, so
 every public page links to the source (`WASTATUS_SOURCE_URL`, by default
-`https://github.com/PalWorks/snipshare`). A changed copy must point that link at its
+`https://github.com/PalWorks/snipshare-whatsapp-status-maker`). A changed copy must point that link at its
 own changed source. Third-party packages keep their own licences whatever is agreed;
 see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

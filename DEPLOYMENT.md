@@ -23,9 +23,9 @@ accounts and keys) are in the owner's private operations notes and in the host's
 | `app` | container `snipshare-app`, image `snipshare:latest` built on the host: the pages, the page API and the renderer's API on port 8790, reachable only inside the project's network |
 | `tunnel` | container `snipshare-tunnel`, `cloudflare/cloudflared` pinned to a version: the only way in. No host port is opened |
 | Network | `snipshare`, the project's own |
-| Volumes | `snipshare_data` at `/data` (people database, uploads, jobs, each person's clips and stickers under `users/`, the sticker library under `stickers/`, the extension download under `src/`, logs); `snipshare_backups` at `/data/backups` (the people database, nightly, seven kept) |
+| Volumes | `snipshare_data` at `/data` (people database, uploads, jobs, each person's clips and stickers under `users/`, the sticker library under `stickers/`, logs); `snipshare_backups` at `/data/backups` (the people database, nightly, seven kept) |
 | Settings | `/opt/snipshare/.env` (mode 600) for the app, every name in [.env.example](.env.example) under "SnipShare"; `/opt/snipshare/tunnel.env` (mode 600) holding `TUNNEL_TOKEN` alone |
-| Image | `python:3.13-slim-trixie` with Debian's ffmpeg and [deploy/requirements.txt](deploy/requirements.txt): what the site runs, without yt-dlp, the token plugin or the websocket client |
+| Image | `python:3.13-slim-trixie`, refreshed at every deploy (`build --pull`), with Debian's ffmpeg and [deploy/requirements.txt](deploy/requirements.txt): what the site runs, without yt-dlp, the token plugin or the websocket client. The extension's zip is built into it at `/app/extension`, read-only to the app (D-101) |
 | Limits | app: 3 CPUs, 3 GB, 512 processes, read-only root, no capabilities, user 10001. tunnel: half a CPU, 256 MB, 128 processes, read-only, no capabilities |
 | Scheduled work | inside the app (`wastatus/watch.py`): checks every 5 minutes, the daily digest, backup and tidy at 03:00 UTC. Nothing in the host's crontab |
 | Monitoring | an external uptime monitor on `/api/v1/health`, looking for `"ok":true` |
@@ -52,7 +52,9 @@ git-ignored `dist/`), copies only what the image needs (`deploy/`, `wastatus/`,
 `assets/`, `requirements.txt`) and the git revision to the host, runs
 `docker compose up -d --build`, prunes this project's own superseded images by the
 `project.name=snipshare` label and nothing else, waits for the app to report healthy,
-and copies the extension's zip into the data volume, where `/install` offers it.
+and the extension's zip goes into the image itself, copied into the build
+context before the build, so the running app cannot replace it (D-101). The
+script refuses to run unless the host's `.env` and `tunnel.env` are mode 600.
 
 ## Who may use it
 

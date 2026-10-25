@@ -28,6 +28,7 @@ const KEEP_EVERY = 2 * 1024 * 1024; // a download is saved to storage after this
 const ATTEMPTS = 8;                // consecutive failures before giving up a step
 const POLL_SILENCE = 10 * 60000;   // how long the renderer may be unreachable
 const STALL_TIMEOUT = 30000;       // a download with nothing arriving for this long has dropped
+const READ_SILENCE = 150000;       // the YouTube page saying nothing for this long has gone
 const THUMBS = ["maxresdefault", "sddefault", "hqdefault"];
 
 // -- storage -------------------------------------------------------------------
@@ -264,9 +265,13 @@ function readWindow(tabId, params, onProgress, hold) {
     let finished = false;
     let heard = false;
     // Silence, not length, is what counts: the page reports twice a second while it
-    // reads and while an ad plays, so a minute of nothing means it has gone.
+    // reads and while an ad plays. Not a minute, though: after a long ad in a tab
+    // that is not in front, Chrome can slow the page's timers to about one wake a
+    // minute, and a 60 second limit then failed a read that was only being held
+    // back (seen 2026-10-25). A closed or reloaded tab is noticed at once anyway,
+    // by the port disconnecting.
     const silent = () => fail(new Failure("Reading the video took too long. Try again", "capturing"));
-    let timer = setTimeout(silent, 60000);
+    let timer = setTimeout(silent, READ_SILENCE);
     function fail(err) {
       if (finished) return;
       finished = true;
@@ -287,7 +292,7 @@ function readWindow(tabId, params, onProgress, hold) {
       heard = true;
       if (finished) return;
       clearTimeout(timer);
-      timer = setTimeout(silent, 60000);
+      timer = setTimeout(silent, READ_SILENCE);
       if (message.error) return fail(new Failure(message.error, "capturing"));
       if (message.progress) {
         onProgress(message.progress);

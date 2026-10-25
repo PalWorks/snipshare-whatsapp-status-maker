@@ -162,9 +162,10 @@ nothing here names the deployment. D-087 to D-093, D-095, D-100.
 
 ### Auth
 
-- **Session.** Cookie `snipshare_session`: `HttpOnly`, `SameSite=Lax`, `Path=/`,
-  `Max-Age` 30 days, `Secure` unless the site is plain `http` on a non loopback
-  address. A random 32 byte token, stored as its SHA-256. Ended at once by a
+- **Session.** Cookie `__Host-snipshare_session` (since D-101; it was
+  `snipshare_session`): `HttpOnly`, `SameSite=Lax`, `Path=/`, no `Domain`, `Max-Age`
+  30 days, `Secure` unless the site is plain `http` on a non loopback address. An
+  address signs in only with the Google account that first used it (`google_sub`). A random 32 byte token, stored as its SHA-256. Ended at once by a
   decline or a suspension.
 - **The page's value.** `csrf_for(session)`: an HMAC-SHA256 of the session, 40 hex
   characters, written into the page and sent back as `X-Wastatus-Token` (or `t=` on
@@ -193,7 +194,7 @@ nothing here names the deployment. D-087 to D-093, D-095, D-100.
 | `/app` | the tool page with the person's value in it; `303` to `/signin?next=/app` when signed out |
 | `/account`, `/admin` | the account and admin pages; signed out `303` to sign in, `/admin` for a non admin `303` to `/app` |
 | `/site.css`, `/site.js`, `/theme.js`, `/nav.js`, `/nav.css`, `/hosted.js`, `/hosted.css`, `/account.js`, `/admin.js`, `/mark.svg` | assets |
-| `/download/snipshare-extension.zip` | the extension, from `/data/extension`, with ranges |
+| `/download/snipshare-extension.zip` | the extension, built into the image at `/app/extension` and read-only to the app (D-101), with ranges; `/install` shows its SHA-256 |
 | anything else | the 404 page |
 
 **Table API-6: hosted site, open calls (POST, `X-SnipShare: 1`)**
@@ -360,7 +361,7 @@ The hosted site: ask for an upload grant as the page does. `$SESSION` is the coo
 
 ```bash
 curl -s -X POST https://snipshare.example.com/api/grant \
-  -H "Cookie: snipshare_session=$SESSION" -H "X-Wastatus-Token: $PAGE_VALUE" \
+  -H "Cookie: __Host-snipshare_session=$SESSION" -H "X-Wastatus-Token: $PAGE_VALUE" \
   -H 'Origin: https://snipshare.example.com' -H 'Content-Type: application/json' \
   -d '{"purpose":"upload","window":{"url":"https://youtu.be/aaaaaaaaaaa","start":"0:20","end":"0:50"}}'
 # {"grant": "...", "server": "https://snipshare.example.com", "expires_in": 900,

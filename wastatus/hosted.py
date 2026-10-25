@@ -846,6 +846,11 @@ class Handler(BaseHTTPRequestHandler):
     # socket timeout bounds each read and write, not the request, so this is the
     # longest a stalled connection holds a thread.
     timeout = 120
+
+    def parse_request(self) -> bool:
+        # The same refusal as the local page's: a body that could be read two ways,
+        # or one on a method that never reads it, ends the connection (D-101).
+        return super().parse_request() and not serve.refuse_ambiguous_body(self)
     renderer: Renderer  # set by make_server
 
     QUIET = ("/health", "/jobs/")
@@ -912,7 +917,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _read(self, limit: int) -> bytes:
         raw = self.headers.get("Content-Length")
-        if raw is None or not raw.isdigit():
+        if raw is None or not (raw.isascii() and raw.isdigit()):
             raise Refused(HTTPStatus.LENGTH_REQUIRED, "send a Content-Length")
         length = int(raw)
         self._consumed = length <= limit
@@ -925,7 +930,7 @@ class Handler(BaseHTTPRequestHandler):
     def _json_body(self) -> dict[str, Any]:
         try:
             body = json.loads(self._read(JSON_MAX) or b"{}")
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (ValueError, RecursionError) as exc:
             raise Refused(HTTPStatus.BAD_REQUEST, "the body is not JSON") from exc
         if not isinstance(body, dict):
             raise Refused(HTTPStatus.BAD_REQUEST, "the body has to be an object")

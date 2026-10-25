@@ -377,7 +377,9 @@
       id, videoId: String(message.videoId || ""),
       start: Number(message.start), end: Number(message.end),
       needVideo: !!message.needVideo, quality: String(message.quality || "auto"),
-      margin: 4, stallMs: 60000, timeoutMs: 600000, adLimitMs: 300000,
+      // A stall is judged by the clock, not by ticks, and ticks can be a minute
+      // apart in a slowed background tab, so the stall allowance is wider than one.
+      margin: 4, stallMs: 120000, timeoutMs: 600000, adLimitMs: 300000,
     };
     if (!(job.end > job.start) || !job.videoId) return reply(id, { error: "That window is not valid" });
     try {

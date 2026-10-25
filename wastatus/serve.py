@@ -102,6 +102,25 @@ def plain_error(exc: BaseException) -> str:
     return _PATH.sub("a file", text)[:300]
 
 
+BODY_METHODS = ("POST", "PUT", "DELETE")
+
+
+def refuse_ambiguous_body(handler: BaseHTTPRequestHandler) -> bool:
+    """Answer 400 and end the connection for a request whose body could be read two
+    ways, or that carries one where none is read: two Content-Length headers, one
+    beside Transfer-Encoding, or a body on any method but POST, PUT and DELETE.
+    Each leaves bytes another reader could take for the next request (D-101).
+    True when it answered."""
+    lengths = handler.headers.get_all("Content-Length") or []
+    encoded = handler.headers.get("Transfer-Encoding")
+    carries = encoded or any(value.strip() not in ("", "0") for value in lengths)
+    if len(lengths) > 1 or (lengths and encoded) or (carries and handler.command not in BODY_METHODS):
+        handler.close_connection = True
+        handler.send_error(HTTPStatus.BAD_REQUEST, "that request's body cannot be read one way")
+        return True
+    return False
+
+
 def _words_of(body: dict[str, Any], key: str) -> str:
     """One line of a card's words from a request, trimmed and held to CAPTION_MAX."""
     return str(body.get(key) or "").strip()[:CAPTION_MAX].strip()
@@ -1127,7 +1146,7 @@ class Handler(BaseHTTPRequestHandler):
         sending gives it a broken pipe instead of the 413 that explains itself.
         """
         raw = (self.headers.get("Content-Length") or "0").strip()
-        if not raw.isdigit():
+        if not (raw.isascii() and raw.isdigit()):  # `isdigit` alone takes "²"
             # `-1` would read until the socket closes. Nothing is read, and the
             # connection ends after the refusal.
             self.close_connection = True
@@ -1145,9 +1164,11 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return None
         try:
-            return json.loads(self.rfile.read(length) or b"{}")
-        except json.JSONDecodeError:
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, RecursionError):  # not JSON, not UTF-8, or nested too deep
             return {}
+        # Every route reads fields off an object; a list or a string is no request.
+        return body if isinstance(body, dict) else {}
 
     # -- routes -----------------------------------------------------------
 
@@ -1280,8 +1301,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         # No CORS headers, deliberately: a preflight that gets no permission stops a
-        # cross-origin caller from ever sending the token header.
+        # cross-origin caller from ever sending the token header. A body is never
+        # read here, so the connection ends with the answer (D-101).
+        self.close_connection = True
         self._send(HTTPStatus.FORBIDDEN, b"", "text/plain")
+
+    def parse_request(self) -> bool:
+        return super().parse_request() and not refuse_ambiguous_body(self)
 
     # -- handlers ---------------------------------------------------------
 

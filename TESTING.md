@@ -2,8 +2,9 @@
 
 ## Current state, stated plainly
 
-**1464 offline tests pass, plus 7 opt in end to end tests**, counted
-2026-10-25T15:11:42+05:30, after the audit before publication (D-100).
+**1509 offline tests pass, plus 7 opt in end to end tests**, counted
+2026-10-25T22:43:40+05:30, after the second security pass (D-101), whose tests are
+`TestTheSecondSecurityPass` and `TestARequestIsReadOneWay` in `tests/test_portal.py`.
 They cover timestamp parsing, transliteration, output naming, retention, logging,
 frame offsets, the local page, the posting driver, and since 2026-10-24 the hosted
 renderer, the capture cut and the browser extension's parser, which runs in Node

@@ -163,10 +163,9 @@ class TestFetchingIsGuarded:
             def __enter__(self): return self
             def __exit__(self, *_e): return None
 
-        monkeypatch.setattr(gifs.urllib.request, "urlopen",
-                            lambda *_a, **_k: Response())
+        monkeypatch.setattr(gifs._media_opener, "open", lambda *_a, **_k: Response())
         with pytest.raises(gifs.GifError, match="over the"):
-            gifs.fetch("https://x/a.gif", ceiling=8_000_000)
+            gifs.fetch("https://media1.giphy.com/a.gif", ceiling=8_000_000)
 
     def test_a_lying_header_does_not_get_past_the_ceiling(self, monkeypatch):
         """The provider's byte count is usually right and is not a promise."""
@@ -179,10 +178,23 @@ class TestFetchingIsGuarded:
             def __enter__(self): return self
             def __exit__(self, *_e): return None
 
-        monkeypatch.setattr(gifs.urllib.request, "urlopen",
-                            lambda *_a, **_k: Response())
+        monkeypatch.setattr(gifs._media_opener, "open", lambda *_a, **_k: Response())
         with pytest.raises(gifs.GifError, match="over the"):
-            gifs.fetch("https://x/a.gif", ceiling=100)
+            gifs.fetch("https://static.klipy.com/a.gif", ceiling=100)
+
+    @pytest.mark.parametrize("url", [
+        "https://example.com/a.gif", "http://media1.giphy.com/a.gif",
+        "https://giphy.com.example.net/a.gif", "https://127.0.0.1/a.gif",
+    ])
+    def test_only_the_providers_media_hosts_are_fetched(self, url):
+        """D-101: an address in a provider's answer cannot point the server anywhere."""
+        with pytest.raises(gifs.GifError, match="not an address"):
+            gifs.fetch(url, ceiling=100)
+
+    def test_a_redirect_off_the_media_hosts_is_not_followed(self):
+        handler = gifs._MediaRedirects()
+        with pytest.raises(gifs.GifError, match="led somewhere"):
+            handler.redirect_request(None, None, 302, "Found", {}, "http://169.254.169.254/")
 
 
 class TestErrorsAreSafeToShow:

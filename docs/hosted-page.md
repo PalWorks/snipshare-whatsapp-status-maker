@@ -48,7 +48,7 @@ account that can approve, see usage, and suspend.
 
 - **This repository was private** on GitHub at the time (`PalWorks/whatsapp-status-maker`,
   which stays private with the full history). Since 2026-10-25 it is published as a
-  fresh copy, `PalWorks/snipshare` (D-099). The page's code is readable by anyone, as
+  fresh copy, `PalWorks/snipshare-whatsapp-status-maker` (D-099). The page's code is readable by anyone, as
   any website's is; nothing secret is in it.
 - **A Google Cloud project already exists for this repository**, created 2026-08-31
   for the Google Sheet record and owned by the owner's Google account. The plan uses it

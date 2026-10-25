@@ -340,7 +340,7 @@ repository is public (D-099), so everything committed is published.
    about a platform in [MEMORY.md](MEMORY.md) or
    [docs/extraction.md](docs/extraction.md)
 7. Push only with the owner's say so (AGENTS.md, "Ask first"). The public remote is
-   `PalWorks/snipshare`; the private `PalWorks/whatsapp-status-maker` keeps the older
+   `PalWorks/snipshare-whatsapp-status-maker`; the private `PalWorks/whatsapp-status-maker` keeps the older
    history
 
 ## Roll back

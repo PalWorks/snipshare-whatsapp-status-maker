@@ -44,6 +44,7 @@ erDiagram
         text email
         text purpose
         text scope
+        real created
     }
     usage {
         text email PK
@@ -90,17 +91,17 @@ the uploads their grants make in the renderer. Times are Unix seconds (`real`); 
 | `status` | text | `pending`, `approved`, `declined`, `suspended` |
 | `role` | text | `user` or `admin`. `admin` only for addresses in `WASTATUS_ADMIN_EMAILS`, set at every start; taken off the list, back to `user` |
 | `answers` | text, JSON | `{name, use, heard}` from the request, at most 120, 600 and 200 characters |
-| `google_sub` | text, nullable | Google's account id, when the request came through Google |
+| `google_sub` | text, nullable | Google's account id: set by a request through Google, or bound at the first Google sign-in; a later sign-in from another Google account is refused (D-101) |
 | `created`, `decided`, `last_seen` | real | `last_seen` is written at sign in and at most every five minutes of use |
 | `gif_source` | text | `''`, `giphy`, `klipy` or `both` |
-| `picture` | text | Google's photo address, at most 500 characters |
+| `picture` | text | Google's photo address, at most 500 characters; anything but `https` on `*.googleusercontent.com` is stored as empty |
 
 **Table DM-2: the other tables**
 
 | Table | Key | Columns | Written by | Read by | Kept |
 |---|---|---|---|---|---|
 | `sessions` | `hash` (SHA-256 of a 32 byte token) | `email`, `created`, `expires` (created plus 30 days, not sliding), `last_seen`, `agent` ("Chrome on Linux", at most 60) | sign in, sign out, ending sessions, a decline or suspension | every signed in request, the account page | until expiry; expired rows go whenever a session starts |
-| `grants` | `hash` | `email`, `purpose` (`upload` or `clip`), `scope` (the stem, for a clip), `expires` | `POST /api/grant`; `check_grant` slides `expires` to 15 minutes on use | the renderer's upload routes, `GET /api/v1/clip` | rows an hour past expiry go at each new grant; all of a person's go when their last session ends |
+| `grants` | `hash` | `email`, `purpose` (`upload` or `clip`), `scope` (the stem, for a clip), `expires`, `created` | `POST /api/grant`; `check_grant` slides `expires` to 15 minutes on use, never past two hours after `created` (D-101) | the renderer's upload routes, `GET /api/v1/clip` | rows an hour past expiry go at each new grant; all of a person's go when their last session ends |
 | `usage` | (`email`, `day`) | `clips`, `failures`, `upload_bytes`, `render_seconds` | `reserve_upload` (the check and the count in one transaction), `refund_upload`, `count_clip` | the daily limits, `/api/account`, `/api/admin`, the digest | not pruned |
 | `gif_keys` | (`email`, `provider`) | `secret` (Fernet, keyed by `sha256("gif:" + WASTATUS_SECRET_KEY)`), `created` | `POST /api/gifkey`, `/api/gifkey/delete` | each request and render, bound to the person | until removed. A changed `WASTATUS_SECRET_KEY` leaves old keys unreadable, and they are ignored |
 | `history` | `id`, autoincrement; index `history_by_person (email, at)` | `at`, `video_id`, `title`, `channel`, `mode`, `start`, `end`, `stem`, `ok`, `seconds`, `error` | the end of every hosted page render, only while the person exists | `/api/account/history` | 90 days (`HISTORY_DAYS`): pruned at each insert, filtered at each read |
@@ -262,6 +263,7 @@ and safe to run on every start:
 |---|---|---|
 | `people.gif_source` | `alter table add column ... default ''` | 2026-10-25, D-095 |
 | `people.picture`, `sessions.agent` | `alter table add column ... default ''` | 2026-10-25, D-098 |
+| `grants.created` | `alter table add column ... default 0`, then every existing grant stamped with the time of the migration | 2026-10-25, D-101 |
 | `gif_keys` keyed by (`email`, `provider`) instead of `email` | **not additive**: rename, create, copy, drop, in one `begin immediate` transaction, so a process stopped half way leaves the old table and the next start tries again | 2026-10-25, D-095 |
 
 The pattern for the next change: a new column gets a default, so old rows and old code

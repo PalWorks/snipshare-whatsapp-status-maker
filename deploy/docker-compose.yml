@@ -47,7 +47,8 @@ services:
     image: cloudflare/cloudflared:2026.10.0
     container_name: snipshare-tunnel
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
+    # Metrics on its own loopback only, out of reach of the app container.
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
     # Its own file, holding TUNNEL_TOKEN and nothing else: the tunnel has no
     # business with the app's keys.
     env_file: ../tunnel.env

@@ -98,7 +98,7 @@ for _ in range(50):
 
 # A session, minted the way a Google sign-in would end.
 os.environ.update({k: v for k, v in env.items() if k.startswith("WASTATUS_")})
-from wastatus import accounts  # noqa: E402
+from wastatus import accounts, portal  # noqa: E402
 store = accounts.Accounts(data / "people.db")
 session = store.start_session(EMAIL)
 
@@ -119,8 +119,11 @@ try:
             pass
         time.sleep(0.2)
     top = T(json.load(urllib.request.urlopen(f"http://127.0.0.1:{CDP}/json/version"))["webSocketDebuggerUrl"])
-    top.call("Storage.setCookies", cookies=[{"name": "snipshare_session", "value": session,
-                                              "domain": "127.0.0.1", "path": "/", "httpOnly": True}])
+    # `__Host-`: Secure, no domain (host only), path `/`; Chrome counts 127.0.0.1 as
+    # a secure origin, so it keeps and sends it over plain http here.
+    top.call("Storage.setCookies", cookies=[{"name": portal.SESSION_COOKIE, "value": session,
+                                              "url": SITE, "path": "/", "httpOnly": True,
+                                              "secure": True}])
     first = next(t for t in targets() if t["type"] == "page")
     page = T(first["webSocketDebuggerUrl"])
     page.call("Page.enable")
@@ -176,7 +179,7 @@ try:
     if report["video"]["error"]:
         report["video_again"] = make("video", "2:00", 10)
     st = json.loads(urllib.request.urlopen(urllib.request.Request(
-        f"{SITE}/api/state", headers={"Cookie": f"snipshare_session={session}",
+        f"{SITE}/api/state", headers={"Cookie": f"{portal.SESSION_COOKIE}={session}",
                                        "X-Wastatus-Token": page.js("document.body.dataset.token")})).read())
     report["clips_on_server"] = [(c["stem"], c["size_mb"], c["video"]) for c in st["clips"]]
     report["quota_after"] = st["quota"]

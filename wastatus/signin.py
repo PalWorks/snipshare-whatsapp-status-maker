@@ -87,7 +87,13 @@ def human(token: str, address: str = "") -> bool:
     """Cloudflare Turnstile's answer for a form. With no secret set (a local copy,
     or tests) every request passes, and that is logged, never silent."""
     secret = os.environ.get(TURNSTILE_SECRET_ENV) or ""
+    site = (os.environ.get("WASTATUS_PUBLIC_URL") or "").strip().rstrip("/")
     if not secret:
+        if site.startswith("https://"):
+            # A public site whose secret has gone missing must not quietly let
+            # every form through.
+            log.warning("Turnstile has no secret on a public site; the form is refused")
+            return False
         log.info("Turnstile is not configured; the check is skipped")
         return True
     if not token or len(token) > 4096:
@@ -105,7 +111,14 @@ def human(token: str, address: str = "") -> bool:
         # failing open lets bots in during one; a sign-up can be tried again.
         log.warning("Turnstile could not be asked: %s", exc)
         return False
-    return bool(answer.get("success"))
+    if not answer.get("success"):
+        return False
+    # A token solved on some other site that uses Turnstile is not one for this one.
+    host = urllib.parse.urlsplit(site).hostname if site else None
+    if host and answer.get("hostname") and answer.get("hostname") != host:
+        log.warning("Turnstile answered for another host")
+        return False
+    return True
 
 
 class Limiter:

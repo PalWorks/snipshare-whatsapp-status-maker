@@ -34,6 +34,7 @@ row needs more, the task below has it.
 
 | Task | Finished | What it delivered |
 |---|---|---|
+| [T-071](#t-071-done-a-second-security-pass-and-the-first-deploy-from-the-public-repository) A second security pass, and the first deploy from the public repository | 2026-10-25 | static and supply chain audit plus 133 defensive tests; every weakness found fixed and tested (D-101); the repository renamed `snipshare-whatsapp-status-maker`; deployed |
 | [T-070](#t-070-done-audit-and-publish-the-repository) Audit and publish the repository | 2026-10-25 | a four-part audit of the whole codebase with every finding fixed and tested (D-100); AGPL-3.0-only with a commercial licence, third-party notices and contribution terms (D-099); the documentation set completed to the agent documentation guide; a fresh single-commit public repository |
 | [T-069](#t-069-done-an-account-page-both-gif-keys-and-no-black-first-frame) An account page, both GIF keys, no black first frame | 2026-10-25 | `/account` in two columns with Profile, History, API keys, Feedback, Extension and Privacy and data; GIPHY and KLIPY kept at once and searched either or both; feedback mailed with a reply-to; clips open on their picture rather than black; `extension/` renamed `src/` |
 | [T-068](#t-068-done-snipshare-the-full-page-hosted-for-invited-people) SnipShare: the full page, hosted, for invited people | 2026-10-25 | the extension's button opens the site: Google sign-in after the owner approves a request, each person's own clips, stickers and GIF key, the extension reading the video and loading WhatsApp for the page, daily limits, alerts and a digest, a self-contained Compose project behind a Cloudflare Tunnel, and a repository that names no site, host or person. Verified end to end locally and in production |
@@ -93,6 +94,24 @@ overtaken; they are not missing, they are gone.
 
 ---
 
+## T-071 (done) A second security pass, and the first deploy from the public repository
+
+**Finished:** 2026-10-25T22:43:40+05:30
+
+**Goal.** No way in through a link, text, a script or a request trick, verified, and
+the site running the public repository's code.
+
+**Acceptance.**
+
+- [x] Static audit (semgrep), dependency audit (pip-audit), container and deploy
+  review; 133 defensive tests against a local copy
+- [x] Every weakness found fixed with a test (D-101); LIMITATIONS.md, Table LI-13,
+  for what needs the owner
+- [x] Full suite, Node tests, `scripts/site_check.py` and `scripts/extension_check.py`
+  pass locally
+- [x] Pushed to `PalWorks/snipshare-whatsapp-status-maker` and deployed with
+  `scripts/deploy.sh`, then checked on the live site
+
 ## T-070 (done) Audit and publish the repository
 
 **Finished:** 2026-10-25T15:11:42+05:30
@@ -117,7 +136,7 @@ fixed; every fix with a test.
   source
 - [x] Documents completed to the agent documentation guide and swept
 - [x] A secrets scan (gitleaks) of the exact tree published, and the deny list test
-- [x] Published as one commit to `PalWorks/snipshare`
+- [x] Published as one commit to `PalWorks/snipshare-whatsapp-status-maker`
 - [ ] Redeploy the hosted site with these changes, which needs the owner's go ahead
   (AGENTS.md, "Ask first")
 

@@ -11,6 +11,7 @@ docs/hosted-page.md, Phase 0).
 
 from __future__ import annotations
 
+import hashlib
 import http.client
 import json
 import re
@@ -1181,3 +1182,127 @@ def test_the_container_s_memory_is_read_from_its_cgroup(tmp_path):
     (tmp_path / "memory.max").write_text("max\n")
     assert watch.memory_use(tmp_path) is None
     assert watch.memory_use(tmp_path / "missing") is None
+
+
+class TestTheSecondSecurityPass:
+    """D-101: the protections added in the security audit after publication."""
+
+    def test_an_address_signs_in_only_with_the_google_account_that_first_used_it(self, site):
+        site.accounts.add("a@example.com", "A")
+        site.accounts.bind_google("a@example.com", "s-original")
+        person = Browser(site)
+        status, answer = person.open_call("/api/session", {"credential": "google:a@example.com"})
+        assert status == 403 and "not the one" in answer["error"]
+
+    def test_the_first_google_account_is_remembered(self, site):
+        approved(site, "b@example.com")
+        assert site.accounts.google_sub("b@example.com") == "s-b@example.com"
+
+    @pytest.mark.parametrize("url, kept", [
+        ("https://lh3.googleusercontent.com/a/photo", True),
+        ("javascript:alert(1)", False),
+        ("http://lh3.googleusercontent.com/a/photo", False),
+        ("https://example.com/photo", False),
+    ])
+    def test_only_google_s_photo_host_is_kept_as_a_picture(self, site, url, kept):
+        site.accounts.add("c@example.com", "C")
+        site.accounts.set_picture("c@example.com", url)
+        assert (site.accounts.picture("c@example.com") == url) is kept
+
+    def test_a_busy_grant_still_ends(self, site, monkeypatch):
+        site.accounts.add("d@example.com", "D")
+        grant = site.accounts.grant("d@example.com", "upload")
+        start = time.time()
+        later = start + accounts.GRANT_LIFETIME + 60
+        for moment in range(int(start), int(later), 600):   # used every ten minutes
+            monkeypatch.setattr(accounts.time, "time", lambda moment=moment: moment)
+            site.accounts.check_grant(grant, "upload", renew=True)
+        monkeypatch.setattr(accounts.time, "time", lambda: later)
+        assert site.accounts.check_grant(grant, "upload", renew=True) is None
+
+    def test_a_picture_claiming_to_be_huge_is_refused_before_it_is_decoded(self):
+        import base64
+        import io
+        import struct
+        import zlib
+
+        from PIL import Image
+        # A real 1 by 1 PNG whose header then says 5000 by 5000: under Pillow's own
+        # limit, over ours.
+        buffer = io.BytesIO()
+        Image.new("RGBA", (1, 1)).save(buffer, "PNG")
+        data = bytearray(buffer.getvalue())
+        data[16:24] = struct.pack(">II", 5000, 5000)
+        data[29:33] = struct.pack(">I", zlib.crc32(bytes(data[12:29])) & 0xFFFFFFFF)
+        with pytest.raises(ValueError, match="too large"):
+            stickers.save_upload("big", base64.b64encode(bytes(data)).decode())
+
+    def test_a_public_site_without_its_turnstile_secret_refuses_forms(self, monkeypatch):
+        monkeypatch.delenv("WASTATUS_TURNSTILE_SECRET", raising=False)
+        monkeypatch.setenv("WASTATUS_PUBLIC_URL", "https://snipshare.example.com")
+        assert signin.human("anything") is False
+
+    def test_an_alert_s_log_line_names_nobody(self, site, caplog):
+        site.alert("test", "someone@example.com has used 90% of today's allowance")
+        assert "someone@example.com" not in caplog.text and "a person" in caplog.text
+
+    def test_the_extension_offered_is_the_one_in_the_image(self, site, tmp_path, monkeypatch):
+        baked = tmp_path / "image" / "snipshare-extension.zip"
+        baked.parent.mkdir()
+        baked.write_bytes(b"PK baked")
+        monkeypatch.setattr(portal, "IMAGE_EXTENSION", baked)
+        (site.root / "extension").mkdir(exist_ok=True)
+        (site.root / "extension" / "snipshare-extension.zip").write_bytes(b"PK planted")
+        response, data = Browser(site).request("GET", "/download/snipshare-extension.zip")
+        assert data == b"PK baked"
+        response, page = Browser(site).request("GET", "/install")
+        assert hashlib.sha256(b"PK baked").hexdigest().encode() in page
+
+    def test_every_answer_carries_the_isolation_headers(self, site):
+        response, _ = Browser(site).request("GET", "/")
+        assert "camera=()" in response.getheader("Permissions-Policy")
+        assert response.getheader("Cross-Origin-Opener-Policy") == "same-origin-allow-popups"
+        assert "Python" not in (response.getheader("Server") or "")
+
+
+class TestARequestIsReadOneWay:
+    """D-101, from the defensive tests: every request has exactly one reading, and
+    one that does not is answered once and its connection closed."""
+
+    raw = TestWhatAStrangerCannotMakeItDo.raw
+
+    def test_a_body_on_options_is_not_a_second_request(self, site):
+        smuggled = b"GET /api/me HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+        answer = self.raw(site, b"OPTIONS /api/state HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                b"Content-Length: %d\r\n\r\n" % len(smuggled) + smuggled)
+        assert answer.count(b"HTTP/1.1 ") == 1
+
+    def test_two_lengths_are_refused(self, site):
+        answer = self.raw(site, b"POST /api/session HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                b"Content-Length: 2\r\nContent-Length: 40\r\n\r\n{}")
+        assert answer.startswith(b"HTTP/1.1 400") and answer.count(b"HTTP/1.1 ") == 1
+
+    def test_a_length_beside_chunking_is_refused(self, site):
+        answer = self.raw(site, b"POST /api/session HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                b"Content-Length: 2\r\nTransfer-Encoding: chunked\r\n\r\n{}")
+        assert answer.startswith(b"HTTP/1.1 400")
+
+    def test_a_length_in_other_digits_is_answered_not_dropped(self, site):
+        answer = self.raw(site, "POST /api/signup HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                "Content-Length: ²\r\n\r\n".encode("latin-1"))
+        assert answer.startswith(b"HTTP/1.1 4")
+
+    @pytest.mark.parametrize("body", [b"[1, 2]", b'"text"', b"[" * 100000 + b"]" * 100000])
+    def test_a_body_that_is_not_an_object_is_answered(self, site, body):
+        person = approved(site, "a@example.com")
+        status, _ = person.api("POST", "/api/caption", body)
+        assert 400 <= status < 500
+
+    def test_python_s_own_error_page_has_a_policy(self, site):
+        answer = self.raw(site, b"BREW /coffee HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        assert b"Content-Security-Policy: default-src 'none'" in answer
+
+    def test_an_alert_cannot_mention_the_whole_chat_space(self, site, env):
+        site.alert("t", "<users/all> <https://evil.example|x>", every=0)
+        sent = [text for kind, text in env if kind == "chat"][-1]
+        assert "<" not in sent and ">" not in sent

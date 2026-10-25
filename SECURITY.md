@@ -343,6 +343,33 @@ public. The findings and their fixes are in [CHANGELOG.md](CHANGELOG.md) and
 | A proxy's password could be written to the debug log | masked |
 | An upload grant outlived the sign-out of its last session | ends with it |
 
+## The second pass, after publication
+
+Updated **2026-10-25T22:43:40+05:30** (D-101). A static and supply chain audit and 133 defensive tests
+against a local copy found no way to read another person's data, run script in a
+page, reach a file or run a command; pip-audit found no known vulnerability in
+either requirements file.
+
+**Table SE-3: what changed**
+
+| Concern | Now |
+|---|---|
+| The extension download, if the app were ever compromised | built into the image, read-only to the app; its SHA-256 on `/install` |
+| A request read two ways by a proxy and this server | two lengths, a length beside chunking, or a body on a method that reads none: 400 and the connection closed |
+| Crashes anybody could cause | a length in other digits, JSON that is not an object or is nested too deep, a screenshot that claims a huge picture: each answered |
+| Another subdomain setting the session cookie | `__Host-snipshare_session` |
+| An address Google gives to somebody new | signs in only with the Google account that first used it |
+| A leaked grant kept busy | ends two hours after it was made |
+| Turnstile | refuses forms when its secret is missing on a public site, and answers for another host |
+| The server fetching an address it was handed | GIFs only from GIPHY's and KLIPY's media hosts, redirects included |
+| Memory | 200 connections at once; sticker pictures at most 4000 by 4000, 300 frames, checked before decoding |
+| Headers | `Permissions-Policy`, `Cross-Origin-Opener-Policy`, HSTS with subdomains, no Python version, a policy on every error page |
+| Persistence after a compromise | `PYTHONNOUSERSITE=1`, so the data volume cannot add code that runs at start |
+| Logs and Chat | no email addresses in the log; alerts cannot mention the whole Chat space |
+
+What remains is in LIMITATIONS.md, Table LI-13: the container can still open
+connections to the host it runs on, which only host firewall rules can stop.
+
 ## Reporting
 
 Single maintainer project, so there is no security team and no response time to

@@ -631,3 +631,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* The cross is 28px; on a touch screen its hit area grows to 44px around it. */
 .thumb__remove::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
+
+/* A 64 character digest: breaks anywhere rather than widen a phone's page. */
+.digest { font-size: 12px; overflow-wrap: anywhere; word-break: break-all; }

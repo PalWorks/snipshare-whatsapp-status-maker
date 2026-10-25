@@ -13,3 +13,5 @@ scripts
 .env
 MEMORY.private.md
 !assets/fonts/LICENSE.md
+tunnel.env
+dist

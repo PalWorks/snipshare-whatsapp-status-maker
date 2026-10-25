@@ -5,6 +5,58 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-101: A second security pass, before the first deploy from the public repository
+
+**Date:** 2026-10-25T22:43:40+05:30
+**Status:** built, tested, deployed with this change
+
+The owner asked, once the repository was public, for confidence that nobody could
+take over the server through a link, text or a script. Two independent reviews: a
+static and supply chain audit (semgrep across the code, pip-audit on both
+requirement files, the container and deploy setup, headers, cryptography, the
+extension), and 133 defensive tests run against a local copy covering escaping,
+file access, access control between people, limits, the data layer and outside
+fetches. Neither found a way to read another person's data, run script in a page,
+reach a file, or run a command. pip-audit found no known vulnerability. What was
+found, and changed:
+
+- **The extension people install is built into the image**, where the app cannot
+  write, instead of copied into the data volume after start. Code running inside the
+  app could otherwise have swapped what every new person installs into the browser
+  that holds their WhatsApp. `/install` shows the zip's SHA-256.
+- **A request has one reading.** Two `Content-Length` headers, one beside
+  `Transfer-Encoding`, or a body on a method that never reads one (`OPTIONS`
+  included) is answered 400 and the connection closed; a length in other digits
+  (`²`), a body that is a list or nested a hundred thousand deep, a screenshot that
+  claims a huge picture are all answered rather than dropping the connection.
+- **Sign-in.** The session cookie is `__Host-snipshare_session`, so no other
+  subdomain can set it; everybody signed in once more. An address signs in only
+  with the Google account that first used it. A grant slides while in use but ends
+  two hours after it was made. A public site with no Turnstile secret refuses the
+  form instead of skipping the check, and a Turnstile answer for another host is
+  refused. Only Google's own photo host is kept as a picture.
+- **Outside fetches.** A GIF is fetched only from GIPHY's and KLIPY's media hosts,
+  and a redirect is followed only to them.
+- **Limits.** At most 200 connections at once; an uploaded sticker may claim at most
+  4000 by 4000 pixels, 300 frames and 200 million pixels in all, checked before
+  decoding.
+- **Headers and logs.** `Permissions-Policy`, `Cross-Origin-Opener-Policy`
+  (allowing Google's sign-in popup), HSTS with `includeSubDomains`, no Python
+  version in `Server`, a policy on Python's own error pages. Alerts reach Chat with
+  `<` and `>` replaced, and reach the log without email addresses.
+- **The container.** `PYTHONNOUSERSITE=1`, so nothing planted in the data volume
+  runs at start; the base image refreshed at every deploy; the tunnel's metrics on
+  its own loopback; `tunnel.env` kept out of the build context; the host's two
+  settings files required at mode 600.
+- **Found while checking it end to end:** after a long ad in a tab that is not in
+  front, Chrome slowed the YouTube page's timers enough that the worker's 60 second
+  silence limit failed a capture that was only being held back. The limits are now
+  150 seconds of silence and 120 seconds without progress.
+
+**Left for the owner** (LIMITATIONS.md, Table LI-13): keeping the app container from
+reaching the host's other services needs firewall rules on the host, which is shared
+and needs root; and the base image is refreshed rather than pinned by digest.
+
 ## D-100: The audit before publication, and what it changed
 
 **Date:** 2026-10-25T15:11:42+05:30
@@ -59,7 +111,7 @@ and stays private. Its early commits carry the site's address, the host's name a
 personal details that later passes removed (D-093); rewriting them out of history is
 possible but easy to get subtly wrong, and one missed blob is public for good. A
 single commit made from the audited tree has nothing in it that was not read. The
-public copy is `PalWorks/snipshare`; the private operations notes stay where they were.
+public copy is `PalWorks/snipshare-whatsapp-status-maker`; the private operations notes stay where they were.
 
 **AGPL-3.0-only, plus a paid commercial licence (dual licensing).** It replaces MIT.
 The owner chose it from Table L-3 over PolyForm Noncommercial, AGPL alone, and

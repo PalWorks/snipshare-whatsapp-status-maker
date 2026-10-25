@@ -428,17 +428,41 @@ def search(query: str, limit: int = SEARCH_LIMIT, large: bool = False) -> list[G
     return found
 
 
+# Where the two providers keep their media, measured 2026-10-25: GIPHY on
+# media1 to media4.giphy.com, KLIPY on static.klipy.com. The server fetches only
+# from these, and follows a redirect only to these, so an address in a provider's
+# answer can never point it at anything else (D-101).
+MEDIA_DOMAINS = ("giphy.com", "klipy.com")
+
+
+def _media_host(url: str) -> bool:
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    return parts.scheme == "https" and any(
+        host == domain or host.endswith("." + domain) for domain in MEDIA_DOMAINS)
+
+
+class _MediaRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        if not _media_host(newurl):
+            raise GifError("the GIF's address led somewhere this tool will not fetch")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_media_opener = urllib.request.build_opener(_MediaRedirects)
+
+
 def fetch(url: str, *, ceiling: int) -> bytes:
     """Download one GIF, refusing anything over `ceiling` before reading it all.
 
     The provider's own byte count is not trusted for this. It is usually right and
     it is not a promise, and the thing being guarded is memory in this process.
     """
-    if not url.startswith("https://"):
+    if not _media_host(url):
         raise GifError("that is not an address this tool will fetch")
     request = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with _media_opener.open(request, timeout=TIMEOUT) as response:
             declared = _int(response.headers.get("Content-Length"))
             if declared and declared > ceiling:
                 raise GifError(

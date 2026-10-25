@@ -29,6 +29,8 @@ HOST="$(setting WASTATUS_DEPLOY_HOST)"
 SITE="$(setting WASTATUS_DEPLOY_SITE)"
 KEY="$(setting WASTATUS_EXTENSION_KEY)"
 : "${HOST:?set WASTATUS_DEPLOY_HOST to the ssh alias of the host, see DEPLOYMENT.md}"
+# An alias, never something ssh could read as one of its own options.
+[[ "$HOST" != -* ]] || { echo "WASTATUS_DEPLOY_HOST must be an ssh alias" >&2; exit 1; }
 DEST=/opt/snipshare
 COMPOSE="cd $DEST/deploy && docker compose"
 
@@ -50,25 +52,30 @@ if [[ -n "$SITE" ]]; then
     ${KEY:+--key "$KEY"} >/dev/null
 fi
 
-ssh "$HOST" "sudo mkdir -p $DEST && sudo chown \$(id -u):\$(id -g) $DEST && \
-             test -f $DEST/.env && test -f $DEST/tunnel.env" || {
-  echo "$DEST/.env and $DEST/tunnel.env must exist on the host first, see DEPLOYMENT.md" >&2
+ssh "$HOST" "sudo mkdir -p $DEST/extension && sudo chown \$(id -u):\$(id -g) $DEST $DEST/extension && \
+             test -f $DEST/.env && test -f $DEST/tunnel.env && \
+             test \"\$(stat -c %a $DEST/.env)\" = 600 && test \"\$(stat -c %a $DEST/tunnel.env)\" = 600" || {
+  echo "$DEST/.env and $DEST/tunnel.env must exist on the host first, mode 600, see DEPLOYMENT.md" >&2
   exit 1
 }
+# The extension goes into the image, read-only to the app (D-101), so it is in the
+# build context before the build rather than copied into a running container after.
+if [[ -n "$SITE" ]]; then
+  [[ -f "$ROOT/dist/snipshare-extension.zip" ]] || { echo "the extension did not build" >&2; exit 1; }
+  scp -q "$ROOT/dist/snipshare-extension.zip" "$HOST:$DEST/extension/snipshare-extension.zip"
+fi
 rsync -az --delete \
   --include='/deploy/***' --include='/wastatus/***' --include='/assets/***' \
   --include='/requirements.txt' --include='/.dockerignore' \
   --exclude='__pycache__/' --exclude='*' \
   "$ROOT/" "$HOST:$DEST/"
 git -C "$ROOT" rev-parse --short HEAD | ssh "$HOST" "cat > $DEST/REVISION"
-ssh "$HOST" "$COMPOSE up -d --build --remove-orphans && \
+# --pull: the base image's security updates arrive with every deploy, rather than
+# waiting on a cache nothing ever refreshes.
+ssh "$HOST" "$COMPOSE build --pull app && $COMPOSE up -d --remove-orphans && \
              docker image prune -f --filter label=project.name=snipshare >/dev/null"
 for _ in $(seq 1 45); do
   if ssh "$HOST" "docker inspect -f '{{.State.Health.Status}}' snipshare-app" 2>/dev/null | grep -q healthy; then
-    if [[ -f "$ROOT/dist/snipshare-extension.zip" && -n "$SITE" ]]; then
-      scp -q "$ROOT/dist/snipshare-extension.zip" "$HOST:$DEST/snipshare-extension.zip"
-      ssh "$HOST" "docker cp $DEST/snipshare-extension.zip snipshare-app:/data/extension/snipshare-extension.zip"
-    fi
     echo "snipshare is healthy, revision $(git -C "$ROOT" rev-parse --short HEAD)"
     exit 0
   fi

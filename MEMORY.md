@@ -91,6 +91,8 @@ Written **2026-10-25T15:11:42+05:30**.
 | Stop while rendering leaves nothing on the renderer and puts the viewer's player back | **CONFIRMED** | `--stop-at rendering`: no jobs after, the player playing where it was |
 | ffmpeg 8 with `-protocol_whitelist file -format_whitelist mov,mp4,m4a,3gp,3g2,mj2,matroska,webm` still reads both containers YouTube sends | **CONFIRMED** locally by the capture tests; Debian's 7.1 in the image has had both options for years [Inference] | `tests/test_capture.py` |
 | The AGPL-3.0 is compatible with Unidecode (GPL-2.0-or-later), the token plugin (GPL-3.0) and aksharamukha (AGPL-3.0), and PolyForm Noncommercial is not | [Inference], the common reading of the licences, not legal advice | D-099 |
+| After a long ad in a tab not in front, Chrome slowed the YouTube page's timers enough to starve a 60 second silence limit | **CONFIRMED** once in five `site_check.py` runs (an ad of about two minutes); passed four times through shorter ads, and the pre-audit extension passed through one. Limits widened, D-101 | `scripts/site_check.py` |
+| GIPHY serves media from `media1` to `media4.giphy.com`, KLIPY from `static.klipy.com` | **CONFIRMED** 2026-10-25 by a search on each | the allowlist in `gifs.MEDIA_DOMAINS` |
 | A web page's Share button can hand a video to WhatsApp's My status on Android | [Unverified] | one real phone, before ROADMAP.md Table RD-1's first idea is built |
 
 ## Table ME-24: SnipShare, 2026-10-25

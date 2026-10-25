@@ -86,7 +86,7 @@ These apply to every response, not just to code:
 - Anything in Cloudflare (the tunnel, Turnstile, DNS) or Google Cloud (the sign-in
   client, its consent screen)
 - `git push`, opening PRs, or anything outward facing. Since 2026-10-25 there are two
-  remotes: the public `https://github.com/PalWorks/snipshare`, published as a fresh
+  remotes: the public `https://github.com/PalWorks/snipshare-whatsapp-status-maker`, published as a fresh
   copy (D-099), and the private `PalWorks/whatsapp-status-maker`, which keeps the full
   history. Both exist, which is not the same as having permission to push to either.
   Anything pushed to the public one is public for good

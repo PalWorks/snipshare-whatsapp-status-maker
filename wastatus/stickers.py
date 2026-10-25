@@ -65,6 +65,11 @@ UPLOAD_MAX_EDGE = 2048  # anything larger is a photo, not a sticker
 # ceiling; and it is pasted at a fraction of a 1080 pixel frame, so nothing above
 # 720 pixels an edge can ever be seen.
 ANIMATED_MAX_BYTES = 8_000_000
+# What an uploaded picture may claim before any of it is decoded: 4000 by 4000, and
+# for an animated one at most 300 frames and 200 million pixels across them all.
+UPLOAD_MAX_PIXELS = 16_000_000
+UPLOAD_MAX_FRAMES = 300
+UPLOAD_MAX_TOTAL_PIXELS = 200_000_000
 ANIMATED_MAX_EDGE = 720
 ANIMATED_MAX_FRAMES = 240   # 20 seconds at 12 fps, well past a Status
 
@@ -533,8 +538,16 @@ def save_upload(name: str, encoded: str) -> dict:
 
     try:
         image = Image.open(io.BytesIO(data))
+        # The size is in the header, read before any pixel is decoded: a small file
+        # can claim a huge picture and take the server's memory when loaded.
+        if image.width * image.height > UPLOAD_MAX_PIXELS:
+            raise ValueError("that picture is too large; keep it under 4000 by 4000")
+        frames = getattr(image, "n_frames", 1)
+        if frames > UPLOAD_MAX_FRAMES or frames * image.width * image.height > UPLOAD_MAX_TOTAL_PIXELS:
+            raise ValueError(f"an animated sticker can have at most {UPLOAD_MAX_FRAMES} "
+                             "frames, and a smaller picture the more it has")
         image.load()
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise ValueError("that file is not an image Pillow can read") from exc
 
     moving = getattr(image, "n_frames", 1) > 1

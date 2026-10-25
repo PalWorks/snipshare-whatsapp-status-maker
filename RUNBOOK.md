@@ -53,7 +53,7 @@ upload resumes from what the renderer holds.
 | Reload this page once | the YouTube page was open before the extension was installed or updated, so nothing is recording in it | reload; the extension listens from the moment a page loads |
 | Wait for the video to start | the player has not loaded the video yet | press play, then the button again |
 | Waiting for the ad to finish | it waits for ads, up to five minutes in all, and that time does not count against reading the video | skip it if you can |
-| YouTube stopped sending the video | the player read nothing new for 60 seconds before the window was covered (since D-100; a slow but steady line is let finish, up to 10 minutes) | reload the YouTube page, then Make my clip again |
+| YouTube stopped sending the video | the player read nothing new for two minutes before the window was covered, or the page went silent for two and a half (since D-100 and D-101; a slow but steady line is let finish, up to 10 minutes) | reload the YouTube page, then Make my clip again |
 | This page plays its video in a way the extension cannot read yet | YouTube has moved MediaSource into a worker, which the page hooks cannot see | needs code: the hooks have to follow it into the worker, D-083 |
 | The renderer did not accept your access token | revoked, or mistyped | a new token from the owner, in Settings |
 | The connection kept dropping | eight failures in a row on one step | Try again; nothing already sent is sent twice |

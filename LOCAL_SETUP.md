@@ -611,7 +611,7 @@ tail -40 logs/wastatus.log                               # the full error output
 | Thing | Path |
 |---|---|
 | Project | wherever you cloned it; the maintainer's copy is `~/Documents/WhatsApp-Status` |
-| Remote | `https://github.com/PalWorks/snipshare` (public, since 2026-10-25) |
+| Remote | `https://github.com/PalWorks/snipshare-whatsapp-status-maker` (public, since 2026-10-25) |
 | Python environment | `.venv/` (not in git) |
 | Output | `out/` (not in git) |
 | Bundled fonts | `assets/fonts/` |

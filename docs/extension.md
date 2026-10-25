@@ -188,7 +188,7 @@ From the audit before publication (D-100). The numbers the extension now lives b
 
 | What | Limit | Why |
 |---|---|---|
-| Reading the window in the page | fails after 60 s with nothing new read, or 10 minutes in all, time on ads excluded | a slow line reading steadily is let finish; only silence fails it. It used to fail at a fixed two minutes |
+| Reading the window in the page | fails after 120 s with nothing new read, or 10 minutes in all, time on ads excluded; the worker gives up on a page silent for 150 s | a slow line reading steadily is let finish; only silence fails it. It used to fail at a fixed two minutes. The silences are wide because Chrome can slow a background tab's timers to about one a minute after a long ad (D-101) |
 | One request to the renderer | 25 s | Chrome stops an extension's worker when a `fetch()` waits more than 30 s for its answer |
 | An upload chunk | starts at 64 KB, never under 32 KB; doubles when one takes under 3 s, halves over 8 s; the size is kept with the job | so no chunk outlasts the request limit on any line the extension can use, and a woken worker carries on at the size the line took |
 | A download | no overall limit; 30 s with nothing arriving is a dropped line; what arrived is kept every 2 MB; a resumed answer must start where the kept part ends | a slow download is not a failure, and storage writes no longer grow with the square of the clip |

@@ -27,9 +27,14 @@ COPY deploy/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY wastatus/ wastatus/
 COPY assets/ assets/
+# The extension people install, built by deploy.sh for this site. In the image, so
+# it is root's and read-only to the app: nothing inside the running container can
+# replace it (DECISIONS.md D-101).
+COPY extension/ extension/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONNOUSERSITE=1 \
     WASTATUS_HOSTED_DATA=/data \
     WASTATUS_LOG_DIR=/data/logs \
     WASTATUS_STICKER_DIR=/data/stickers \
@@ -41,4 +46,4 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD python -c "import sys, urllib.request; sys.exit(urllib.request.urlopen('http://127.0.0.1:8790/api/v1/health', timeout=4).status != 200)"
 # umask 027: the people database, its journal and everybody's clips are readable
 # by this user alone.
-CMD ["sh", "-c", "umask 027 && mkdir -p /data/tmp /data/logs /data/extension && exec python -m wastatus hosted serve --host 0.0.0.0 --port 8790"]
+CMD ["sh", "-c", "umask 027 && mkdir -p /data/tmp /data/logs && exec python -m wastatus hosted serve --host 0.0.0.0 --port 8790"]

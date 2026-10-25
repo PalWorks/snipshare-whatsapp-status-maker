@@ -66,12 +66,15 @@ STATUS_PAGE_ENV = "WASTATUS_STATUS_URL"
 # AGPL code, and its source is offered to everyone who uses it. See
 # THIRD_PARTY_NOTICES.md.
 SOURCE_ENV = "WASTATUS_SOURCE_URL"
-SOURCE_URL = "https://github.com/PalWorks/snipshare"
+SOURCE_URL = "https://github.com/PalWorks/snipshare-whatsapp-status-maker"
 TRUST_PROXY_ENV = "WASTATUS_TRUST_PROXY"
 RENDERS_PER_HOUR_ENV = "WASTATUS_RENDERS_PER_HOUR"
 
 PAGES = Path(__file__).resolve().parent / "pages"
-SESSION_COOKIE = "snipshare_session"
+# `__Host-`: the browser takes it only Secure, for this host alone and for every
+# path, so no other subdomain can plant or overwrite it (D-101). Renamed from
+# `snipshare_session` on 2026-10-25, which signed everybody out once.
+SESSION_COOKIE = "__Host-snipshare_session"
 # Every change the page asks for carries this, which a cross-site form cannot set.
 OPEN_HEADER = "X-SnipShare"
 
@@ -525,11 +528,15 @@ class Portal:
     # -- telling the owner ----------------------------------------------------
 
     def alert(self, key: str, text: str, every: float = 3600) -> None:
-        """One Chat message per key per `every` seconds, so a storm is one line."""
-        log.warning("alert %s: %s", key, text)
+        """One Chat message per key per `every` seconds, so a storm is one line.
+
+        The text goes to the owner's Chat and may name a person; the log, which
+        lasts longer and is read more widely, gets the key and the text with any
+        address taken out."""
+        log.warning("alert %s: %s", key, _EMAIL.sub("a person", text))
         try:
             if self.accounts.should_alert(key, every):
-                notify.chat(f"{NAME}: {text}")
+                notify.chat(f"{NAME}: {plain(text, 3000)}")
         except Exception:  # noqa: BLE001 - an alert must never break what raised it
             log.exception("an alert could not be recorded")
 
@@ -567,6 +574,7 @@ class SiteHandler(hosted.Handler, serve.Handler):
     """
 
     server_version = "snipshare"
+    sys_version = ""   # no Python version in the Server header
     portal: Portal
     QUIET = ("/api/state", "/api/task", "/api/frame", "/api/clip", "/api/v1/health",
              "/api/v1/uploads", "/api/sticker", "/api/gif")
@@ -591,12 +599,26 @@ class SiteHandler(hosted.Handler, serve.Handler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("X-Frame-Options", "DENY")
+        # Nothing here uses the camera, microphone, location or payment; saying so
+        # means an injected script could not either.
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), "
+                         "payment=(), usb=(), interest-cohort=()")
+        # Its own browsing context, apart from Google's sign-in popup, which needs
+        # to answer the page that opened it.
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
         policy = getattr(self, "_policy", None)
         if policy:
             self.send_header("Content-Security-Policy", policy)
         if public_url().startswith("https://"):
-            self.send_header("Strict-Transport-Security", "max-age=31536000")
+            self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         super().end_headers()
+
+    def send_error(self, code: int, message: str | None = None,
+                   explain: str | None = None) -> None:
+        # Python's own error page, for a request too broken to reach a route: it
+        # gets a policy of its own that allows nothing, like every other answer.
+        self._policy = "default-src 'none'; frame-ancestors 'none'"
+        super().send_error(code, message, explain)
 
     def _host_allowed(self) -> bool:
         # Named by its domain, behind a tunnel that answers for that name alone;
@@ -709,7 +731,7 @@ class SiteHandler(hosted.Handler, serve.Handler):
         larger one is not read at all, and the connection ends after the answer, as
         the body would otherwise be parsed as the next request on it."""
         raw = (self.headers.get("Content-Length") or "0").strip()
-        if self.headers.get("Transfer-Encoding") or not raw.isdigit():
+        if self.headers.get("Transfer-Encoding") or not (raw.isascii() and raw.isdigit()):
             self.close_connection = True
             return
         length = int(raw)
@@ -825,6 +847,8 @@ class SiteHandler(hosted.Handler, serve.Handler):
         self._policy = PAGE_POLICY
         person = self._person()
         values = {"SIGNED_IN": "1" if person else "", **self._who(person)}
+        if path == "/install":
+            values["EXTENSION_DIGEST"] = extension_digest(self.portal.root)
         self._send(HTTPStatus.OK, render_page(name, title, description, values),
                    "text/html; charset=utf-8")
 
@@ -891,8 +915,8 @@ class SiteHandler(hosted.Handler, serve.Handler):
         self._send(HTTPStatus.OK, body, "text/html; charset=utf-8")
 
     def _extension_zip(self) -> None:
-        file = self.portal.root / "extension" / "snipshare-extension.zip"
-        if not file.is_file():
+        file = extension_zip(self.portal.root)
+        if file is None:
             return self._not_found()
         self._send_media(file, "application/zip", {
             "Content-Disposition": 'attachment; filename="snipshare-extension.zip"'})
@@ -976,6 +1000,17 @@ class SiteHandler(hosted.Handler, serve.Handler):
         self._signed_in(person, google)
 
     def _signed_in(self, person: Person, google: dict[str, Any] | None = None) -> None:
+        if google and google.get("sub"):
+            # The address is matched to the Google account that first used it: an
+            # address Google later gives to somebody else, as a Workspace address can
+            # be, does not inherit the account (D-101).
+            known = self.portal.accounts.google_sub(person.email)
+            if known and known != google["sub"]:
+                log.warning("a sign-in for a known address came from another Google account")
+                return self._fail(HTTPStatus.FORBIDDEN, "this Google account is not the one "
+                                  "this address signed up with. Write to the operator")
+            if not known:
+                self.portal.accounts.bind_google(person.email, google["sub"])
         if google and google.get("picture"):
             self.portal.accounts.set_picture(person.email, google["picture"])
         token = self.portal.accounts.start_session(person.email, browser_of(
@@ -1027,7 +1062,7 @@ class SiteHandler(hosted.Handler, serve.Handler):
     def _json_body_within(self, limit: int) -> dict[str, Any]:
         try:
             body = json.loads(self._read(limit) or b"{}")
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (ValueError, RecursionError) as exc:
             raise hosted.Refused(HTTPStatus.BAD_REQUEST, "the body is not JSON") from exc
         if not isinstance(body, dict):
             raise hosted.Refused(HTTPStatus.BAD_REQUEST, "the body has to be an object")
@@ -1383,7 +1418,7 @@ def screenshots(raw: Any) -> list[dict[str, str]]:
                 picture = image.convert("RGB")
         except AccessError:
             raise
-        except (UnidentifiedImageError, OSError, ValueError) as exc:
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
             raise AccessError(f"screenshot {index} is not a picture") from exc
         picture.thumbnail((SCREENSHOT_EDGE, SCREENSHOT_EDGE))
         buffer = io.BytesIO()
@@ -1562,6 +1597,35 @@ def fill_app_page(page: str, token: str, data: dict[str, str]) -> str:
                   lambda match: values[match.group(1)], page)
 
 
+# The extension people install, built into the image beside the code, where the
+# running app cannot write (`read_only`, and owned by root): a break-in to the app
+# must not be able to swap what every new person installs into their browser. A
+# copy in the data volume is only looked at outside the image, for a local server.
+IMAGE_EXTENSION = Path(__file__).resolve().parent.parent / "extension" / "snipshare-extension.zip"
+_digests: dict[tuple[str, float], str] = {}
+
+
+def extension_zip(root: Path) -> Path | None:
+    for file in (IMAGE_EXTENSION, root / "extension" / "snipshare-extension.zip"):
+        if file.is_file():
+            return file
+    return None
+
+
+def extension_digest(root: Path) -> str:
+    """The zip's SHA-256, shown on /install so a download can be checked."""
+    file = extension_zip(root)
+    if file is None:
+        return ""
+    key = (str(file), file.stat().st_mtime)
+    if key not in _digests:
+        _digests[key] = hashlib.sha256(file.read_bytes()).hexdigest()
+    return _digests[key]
+
+
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+
+
 def page_values() -> dict[str, str]:
     """What the public pages are filled with. All of it from the environment."""
     site = public_url()
@@ -1602,6 +1666,31 @@ def render_page(name: str, title: str, description: str,
 
 class Server(ThreadingHTTPServer):
     daemon_threads = True
+    # Every connection is a thread. Past this many at once a new one is closed at
+    # once rather than given a thread, so slow connections cannot use up the
+    # container's processes, which ffmpeg needs too (D-101).
+    MAX_CONNECTIONS = 200
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._connections = threading.BoundedSemaphore(self.MAX_CONNECTIONS)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        if not self._connections.acquire(blocking=False):
+            log.warning("connection refused: %d already open", self.MAX_CONNECTIONS)
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._connections.release()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._connections.release()
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         # A phone that walks out of signal, or a tab closed mid-download, is not a

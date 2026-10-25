@@ -21,6 +21,7 @@ import secrets
 import sqlite3
 import threading
 import time
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -37,6 +38,7 @@ SESSION_DAYS = 30
 HISTORY_DAYS = 90
 USAGE_DAYS = 400   # daily counts: a year and a little, for the admin's ranges
 GRANT_SECONDS = 15 * 60
+GRANT_LIFETIME = 2 * 3600   # however busy, a grant ends two hours after it was made
 DEFAULT_CLIPS_PER_DAY = 10
 DEFAULT_UPLOAD_MB_PER_DAY = 500
 
@@ -76,7 +78,8 @@ create table if not exists grants (
   email text not null,
   purpose text not null,
   scope text not null default '',
-  expires real not null
+  expires real not null,
+  created real not null default 0
 );
 create table if not exists usage (
   email text not null,
@@ -257,6 +260,13 @@ class Accounts:
             columns = {row[1] for row in db.execute("pragma table_info(sessions)")}
             if "agent" not in columns:
                 db.execute("alter table sessions add column agent text not null default ''")
+        if "grants" in tables:
+            columns = {row[1] for row in db.execute("pragma table_info(grants)")}
+            if "created" not in columns:
+                # Grants live minutes, so the ones made before this column existed
+                # count as made now; nothing older than a quarter of an hour survives.
+                db.execute("alter table grants add column created real not null default 0")
+                db.execute("update grants set created = ?", (time.time(),))
 
     def _db(self) -> sqlite3.Connection:
         db = getattr(self._local, "db", None)
@@ -455,7 +465,21 @@ class Accounts:
         return count
 
     def set_picture(self, email: str, url: str) -> None:
+        # Google's own photo address, or nothing: it is put into pages as an image
+        # source, and only an https address on Google's photo host belongs there.
+        parts = urllib.parse.urlsplit(url or "")
+        if parts.scheme != "https" or not (parts.hostname or "").endswith(".googleusercontent.com"):
+            url = ""
         self._do("update people set picture = ? where email = ?", (url[:500], email))
+
+    def google_sub(self, email: str) -> str:
+        row = self._one("select google_sub from people where email = ?", (email,))
+        return (row["google_sub"] if row else "") or ""
+
+    def bind_google(self, email: str, sub: str) -> None:
+        """Remember which Google account an address first signed in with."""
+        self._do("update people set google_sub = ? where email = ? and "
+                 "(google_sub is null or google_sub = '')", (sub, email))
 
     def picture(self, email: str) -> str:
         row = self._one("select picture from people where email = ?", (email,))
@@ -500,8 +524,9 @@ class Accounts:
         if purpose not in ("upload", "clip"):
             raise AccessError("unknown purpose")
         token = secrets.token_urlsafe(32)
-        self._do("insert into grants (hash, email, purpose, scope, expires) values (?,?,?,?,?)",
-                 (_hash(token), email, purpose, scope, time.time() + seconds))
+        self._do("insert into grants (hash, email, purpose, scope, expires, created) "
+                 "values (?,?,?,?,?,?)",
+                 (_hash(token), email, purpose, scope, time.time() + seconds, time.time()))
         self._do("delete from grants where expires < ?", (time.time() - 3600,))
         return token
 
@@ -514,8 +539,8 @@ class Accounts:
         slow line, and one that stops expires as usual. Both ask for it."""
         if not token or len(token) > 200:
             return None
-        row = self._one("select email, purpose, scope, expires from grants where hash = ?",
-                        (_hash(token),))
+        row = self._one("select email, purpose, scope, expires, created from grants "
+                        "where hash = ?", (_hash(token),))
         now = time.time()
         if row is None or row["expires"] < now or row["purpose"] != purpose:
             return None
@@ -525,8 +550,11 @@ class Accounts:
         if person is None or person.status != APPROVED:
             return None
         if renew and row["expires"] - now < GRANT_SECONDS - 60:
+            # Slid forward while in use, but never past GRANT_LIFETIME from when it
+            # was made: a grant that leaked and is kept busy still ends (D-101).
+            limit = (row["created"] or now) + GRANT_LIFETIME
             self._do("update grants set expires = ? where hash = ?",
-                     (now + GRANT_SECONDS, _hash(token)))
+                     (min(now + GRANT_SECONDS, limit), _hash(token)))
         return person
 
     # -- limits ------------------------------------------------------------
