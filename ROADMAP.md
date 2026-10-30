@@ -24,6 +24,7 @@ Added **2026-10-25T15:11:42+05:30**, when the repository went public (D-099).
 |---|---|---|
 | A way to make a clip with no extension, from the website alone | Chrome's "share this tab" prompt records the YouTube tab the person picks; the clip then comes back as a download, or on an Android phone through the browser's Share button, where WhatsApp offers My status. A site cannot read another site's player or script WhatsApp Web, so the extension's two jobs have no direct equivalent | recording runs in real time and is a re-encoded screen capture rather than YouTube's own stream; the prompt appears every time; protected video records as black. [Unverified] that Share from a web page reaches My status: to be tested on a real phone before anything is built |
 | Warn before trying a protected (DRM) video | the check deferred in Table HP-1 | a little extension code, once there are a few people |
+| Scheduled Statuses from the extension, run without taking focus, today's tab model as fallback (added 2026-10-31T00:03:18+05:30) | [docs/scheduling.md](docs/scheduling.md): Phase 0 spike, then schedules, custody of the clip, a quiet placement ladder, fallback, page UI, and confirmed send only if the owner allows it | three releases: about 15, 5 and 2 days [Inference]; reviewed and approved 2026-10-31T00:45:04+05:30 (D-104, docs/scheduling.md Section 14); Phase 0 next, on the owner's word |
 | A standard commercial licence | a price list and a short agreement, once enquiries arrive | the owner's time |
 
 ## Phase 1: the local tool (done)

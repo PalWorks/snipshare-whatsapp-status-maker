@@ -30,6 +30,7 @@ documentation guide ([agent_docs_guide.md](agent_docs_guide.md)) for publication
 | SnipShare, the full page hosted for invited people: what it is, why, and how it was built | [docs/hosted-page.md](docs/hosted-page.md), DECISIONS.md D-087 to D-093, [ARCHITECTURE.md](ARCHITECTURE.md) **SnipShare** |
 | The account page, both GIF keys, feedback | [docs/account-page.md](docs/account-page.md), DECISIONS.md D-095 |
 | What was measured before the extension was built | [docs/extension-spike.md](docs/extension-spike.md) |
+| Scheduling a Status for later without taking focus: the requirement and plan (proposed 2026-10-31T00:03:18+05:30) | [docs/scheduling.md](docs/scheduling.md) |
 | How do I install the extension, or let somebody in | [README.md](README.md), **SnipShare**; approving people and tokens in [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Where does the hosted renderer run, and how do I ship to it | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | SnipShare, the extension or the renderer broke | [RUNBOOK.md](RUNBOOK.md), **SnipShare, the hosted page** |

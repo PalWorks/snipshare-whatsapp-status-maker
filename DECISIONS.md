@@ -5,6 +5,73 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-104: Scheduled Statuses: the owner's first answers
+
+**Date:** 2026-10-31T00:18:32+05:30
+**Status:** decided by the owner; nothing built
+
+The owner asked for Statuses to be scheduled from the extension and run without
+taking focus, with today's tab model as the fallback. The requirement and plan are in
+[docs/scheduling.md](docs/scheduling.md). Taken on 2026-10-31T00:14:05+05:30, from
+its Table SC-9:
+
+- **Send may be pressed by a scheduled run**, as a choice made per schedule, default
+  prepare, pressed at most once and confirmed. This amends D-084's "never Send" for
+  scheduled runs only, and only once prepare-only runs have proved out. The manual
+  **Load into WhatsApp** still never sends.
+- Schedules live in the browser only.
+- When no quiet placement works and the person is active, ask by notification;
+  bringing WhatsApp forward is a setting.
+- A missed run may still go ahead up to 30 minutes late.
+- Up to 30 days ahead, pending schedules raised to match; 1 GB of held clips for the
+  owner.
+- The clip is made at scheduling time, not at the due time.
+- The owner first, then people switched on one by one.
+
+**Taken 2026-10-31T00:23:09+05:30, Table SC-10 of the plan:**
+
+- **Schedule tickets and pins.** A clip due beyond 48 hours stays on SnipShare,
+  pinned against pruning, and the extension holds a ticket that reads that one clip
+  until a day after its due time and dies with a suspension. This amends D-090 (the
+  extension never holds a session; a ticket is not one, but it is a credential kept)
+  and D-101 (no grant outlives two hours) for this purpose only.
+- Per person limits the admin sets; the owner at 30 clips and 1.5 GB of upload a day.
+- Held clips: the owner 1 GB, others 400 MB. Pending: the owner 90, others 30.
+- **The queue is a table on an extension page, ordered by time alone.** A post's time
+  is edited in its own row and the table re-sorts; no dragging, no slots. The owner's
+  design, replacing both options offered.
+- Quiet hours on, 23:00 to 07:00. A 60 second warning before any scheduled send.
+- No **Swap times** action; two time edits do it (2026-10-31T00:28:04+05:30).
+
+**Taken 2026-10-31T00:31:42+05:30, Table SC-17, for the second way into the queue, From a link** (a
+link and instructions, the clip made without the person watching):
+
+- Made soon after it is queued, driven by the SnipShare page with the person's own
+  session, so no new credential; making pauses while no SnipShare page is open.
+- A clip nobody has looked at is sent only if the person ticked **Send without my
+  review** when queueing it; otherwise it is prepared.
+- Plain, SnipShare's defaults; saved looks may come later.
+- Entered as a form row per post plus **Paste many**, previewed before queueing.
+- Captured through a ladder of quiet placements, an unfocused helper window first,
+  subject to Phase 0.
+
+**Revised after the plan review, 2026-10-31T00:45:04+05:30** (docs/scheduling.md Section 14, approved
+by the owner at the gate):
+
+- **No schedule tickets or pins.** The case for them rested on a wrong figure: clips
+  are about 10 MB (the encoder's target under WhatsApp's 10 MiB composer ceiling),
+  so 90 fit in about 944 MB. Every scheduled clip is kept on the computer. D-090 and
+  D-101 stand unamended.
+- **No sending of a clip nobody has looked at, in this version.** A clip from a link
+  is sent only after it has been previewed; consent is bound to that clip and the
+  WhatsApp account seen at scheduling.
+- **Sent means WhatsApp's own `ack`**, as D-071 already requires; the plan had
+  proposed the composer closing.
+- **Three releases with gates:** from the editor with the quiet runner first, then
+  from a link, then the bulk bar.
+
+---
+
 ## D-103: The extension is distributed from the site only, not the Chrome Web Store
 
 **Date:** 2026-10-26T01:53:58+05:30
