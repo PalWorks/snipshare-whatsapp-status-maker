@@ -865,7 +865,7 @@ class TestAccountPage:
     def test_the_tool_page_links_to_it(self):
         import pathlib
         hosted_js = (pathlib.Path(portal.__file__).parent / "pages" / "hosted.js").read_text()
-        assert 'link.href = "/account"' in hosted_js and "accountPanel" not in hosted_js
+        assert '"Profile", href: "/account#profile"' in hosted_js and "accountPanel" not in hosted_js
 
     def test_the_overview_never_shows_a_key(self, site, monkeypatch):
         monkeypatch.setattr(gifs, "search", lambda q, limit=40, large=False: [])

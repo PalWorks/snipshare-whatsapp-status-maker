@@ -47,7 +47,7 @@ A **Sign out** button sits at the foot of the section list, always visible, and
 
 | Part | Change |
 |---|---|
-| The tool page | the Account chip is a link to `/account`; the panel is gone; a clip can be opened from History with `/app?clip=<name>` |
+| The tool page | the Account chip opens a menu (since 2026-10-31T12:23:37+05:30, D-107): Profile, History, Scheduled Statuses when scheduling is on, Extension, Admin for admins, Sign out; the panel is gone; a clip can be opened from History with `/app?clip=<name>` |
 | `accounts.py` | a `history` table, one row per finished or failed render, 90 days, gone with the account; the name can be changed |
 | `notify.email` | takes a reply-to, used only for feedback |
 | `/api/report` | failures only; words go through Feedback |
@@ -153,7 +153,7 @@ lead's decision was to frame that page here rather than draw the table a second 
 | Phone | one line, "Scheduling works in Chrome on a computer with the extension.", nothing to press |
 | Ready | `chrome-extension://<id>/queue.html?embed=1&theme=<system, light or dark>` in a frame titled "Your Scheduled Statuses", as tall as its content; **Open in its own tab** beside the heading |
 | Frame silent for 6 s | the frame is removed; **Open the queue in its own tab** asks the extension (`open-queue`) |
-| Up next on the tool page | **Scheduled** goes to `/account#scheduled` in the same tab, as the Account link does; the toast after scheduling still opens the queue's own tab |
+| Up next on the tool page | **Scheduled** goes to `/account#scheduled` in the same tab, as the Account menu's items do; the toast after scheduling still opens the queue's own tab |
 
 ### Table AP-9: what crosses between the page and the frame
 

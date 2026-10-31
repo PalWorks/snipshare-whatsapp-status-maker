@@ -118,6 +118,10 @@ was built; decisions D-104 and D-105.
 - [x] Added 2026-10-31T11:35:20+05:30: Scheduled Statuses in the account page (the queue framed, D-106) and the
   capture fix (IN-14); 156 Node tests, pytest 1593 passed and 7 skipped (counted 2026-10-31 after
   d917694); extension version stays 2.1.0, `EXTENSION_MIN_VERSION` 2.0.0
+- [x] Added 2026-10-31T12:23:37+05:30: the owner's review (D-107): one Schedule button with Next in queue
+  and its time, the Account menu, the footer's fine print removed, the snackbar's width
+  on a phone; extension 2.1.1, `EXTENSION_MIN_VERSION` 2.0.0; 157 Node tests, pytest 1613
+  passed and 7 skipped
 - [ ] The account section's "extension too old" state, driven in a browser
 - [ ] Phase 0 on the owner's Chrome: a composer in a hidden tab, a tab never shown, an
   unfocused helper window on Linux, a tab moved without "Use here", a caption typed

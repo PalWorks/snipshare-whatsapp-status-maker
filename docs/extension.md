@@ -242,7 +242,7 @@ never presses Send.
 |---|---|
 | `queue.html`, `queue.css`, `queue-page.js` | a page of the extension: the queue table, Needs you, history, the held clip budget, the quiet test and the run log. Opened by the page's **Scheduled** link (`open-queue`), by **Open the queue** in the options page, or from the toolbar button's menu (**Scheduled Statuses**). Talks to the worker over the internal port `snipshare-queue` |
 | `queue.js`, `custody.js`, `place.js`, `schedule.js` | the worker's modules, loaded by `importScripts` before its own code: the rules, the held clips, the placement ladder, the stored queue (`SnipQueue`, `SnipCustody`, `SnipPlace`, `SnipSchedule`) |
-| options page | the scheduling settings: quiet hours, the gap for Add to queue, bring WhatsApp forward, take focus when idle, a notice for every post |
+| options page | the scheduling settings: quiet hours, the gap for Next in queue (Add to queue until D-107), bring WhatsApp forward, take focus when idle, a notice for every post |
 | new permissions | `notifications`, `idle`, `unlimitedStorage`, `contextMenus`; the reasons are in [SECURITY.md](../SECURITY.md) |
 
 **Table EX-6: what the page may now ask, over the external port**
@@ -251,7 +251,7 @@ never presses Send.
 |---|---|---|---|
 | `hello` | | `{version, whatsapp, features}` | `features` is `["schedule"]`; the page offers scheduling only when it is there and the server's `scheduling.enabled` is on |
 | `schedule` | `url` of `/api/v1/clip?stem=`, `grant` (clip), `stem`, `name`, `caption`, `mode`, `due` or `afterLast: true`, `action: "prepare"`, `limits` | progress ("Keeping the clip on this computer"), then `{schedule, note}` | validates the time and the limits, then fetches the clip into IndexedDB; any `action` but `prepare` is refused |
-| `queue-peek` | | `{next, count, needsYou}`, the next three | for the page's **Up next** |
+| `queue-peek` | | `{next, count, needsYou, lastDue, gapMinutes, quiet}`: the next three, and from 2.1.1 the last pending post's time, the gap and quiet hours, read only | for the page's **Up next**, and for the time on **Next in queue** (D-107) |
 | `open-queue` | | `{opened: true}` | opens `queue.html` in a new active tab, or focuses the open one: the person pressed a link, so the front is right |
 
 **The alarms.** One `sched-next` alarm stands for the nearest thing to do (a prewarm
@@ -296,3 +296,12 @@ is what used to leave a capture at "Getting the video" (IN-14). Tests:
 
 Version stays 2.1.0 and `EXTENSION_MIN_VERSION` 2.0.0. [Unverified] on the owner's
 open tabs: the rule is tested with fake tabs only.
+
+### Version 2.1.1, 2026-10-31T12:23:37+05:30
+
+`queue-peek` also answers `lastDue`, `gapMinutes` and `quiet`, read from the stored
+queue and the person's scheduling settings and changing nothing, so the tool page's
+**Next in queue** can name its time (D-107). 2.1.0 had already been offered at
+`/download`, so the change has its own number. `EXTENSION_MIN_VERSION` stays 2.0.0: an
+older extension still schedules, and the page shows no time on the chip. Test:
+`src/test/schedule.test.js`, "Up next also carries what the page needs".

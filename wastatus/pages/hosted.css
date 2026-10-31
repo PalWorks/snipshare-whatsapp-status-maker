@@ -13,28 +13,47 @@
 }
 .hostbanner .button { flex: none; }
 
-.accountchip { gap: 8px; text-decoration: none; cursor: pointer; }
+.accountchip { gap: 8px; cursor: pointer; }
 .accountchip__initial {
   width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
   background: var(--accent); color: var(--accent-text); font-weight: 700; font-size: 12px;
   transition: transform 140ms, box-shadow 140ms; overflow: hidden;
 }
 .accountchip__initial img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* Says "this goes somewhere" before it is pressed: the chip takes the accent, and
-   the initial grows a ring. */
-.accountchip:hover, .accountchip:focus-visible {
+/* Says "this opens something" before it is pressed, and while it is open: the chip
+   takes the accent, and the initial grows a ring. */
+.accountchip:hover, .accountchip:focus-visible, .accountchip[aria-expanded="true"] {
   border-color: var(--accent); color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
-.accountchip:hover .accountchip__initial, .accountchip:focus-visible .accountchip__initial {
+.accountchip:hover .accountchip__initial, .accountchip:focus-visible .accountchip__initial,
+.accountchip[aria-expanded="true"] .accountchip__initial {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
   transform: scale(1.06);
 }
-/* Pressed and on its way: the initial gives way to the spinner. */
-.accountchip.is-loading::before { margin-right: 0; }
-.accountchip.is-loading .accountchip__initial { display: none; }
-/* On a phone the chip is the initial alone: the bar is one line. */
-.accountchip > span:last-child { display: none; }
+/* On a phone the chip is the initial and the caret: the bar is one line. */
+.accountchip__label { display: none; }
+
+/* The menu under it: right aligned to the chip, kept on screen by hosted.js. */
+.accountmenu { position: relative; }
+.accountmenu__list {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  min-width: 220px; max-width: calc(100vw - 16px); padding: 6px 0;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+}
+.accountmenu__list[hidden] { display: none !important; }
+.accountmenu__item {
+  display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 16px;
+  box-sizing: border-box; border: 0; background: none; color: var(--text);
+  font: inherit; font-size: 14.5px; text-align: left; text-decoration: none; cursor: pointer;
+}
+.accountmenu__item:hover, .accountmenu__item:focus {
+  background: var(--surface-sunken); color: var(--text); outline: none;
+}
+.accountmenu__item:focus-visible { box-shadow: inset 3px 0 0 var(--accent); }
+.accountmenu__separator { height: 1px; margin: 6px 0; background: var(--border); }
 
 .hostnote {
   margin: 8px 0 0; color: var(--warn); font-size: 13.5px;
@@ -42,7 +61,7 @@
 .hostquota { margin: 6px 0 0; }
 
 @media (min-width: 600px) {
-  .accountchip > span:last-child { display: inline; }
+  .accountchip__label { display: inline; }
 }
 
 /* The GIF service switch, on a phone too. The local tool keeps it to wide screens,
@@ -70,13 +89,11 @@
 }
 
 /* ── Scheduled Statuses ─────────────────────────────────────────────────────
-   The picker, the two buttons and Up next. The elements are in index.html, hidden,
+   The picker, its one button and Up next. The elements are in index.html, hidden,
    and only the hosted page's script shows them. Phone first: one column, every
    target 44px, the primary action last and full width. [hidden] is set again where
    a rule gives a display, so a class never undoes it. */
 
-.schedbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.schedbtns .button { width: 100%; }
 #doer-schedule[hidden], .sched[hidden], .upnext[hidden], .sched__progress[hidden] { display: none !important; }
 body[data-where="here"] #doer-schedule { order: -1; }
 

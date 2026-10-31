@@ -149,8 +149,8 @@ driven in outline like this:
 1. Start a local hosted server with a throwaway data folder and sign a test person in,
    with scheduling switched on for them.
 2. Load the unpacked extension built for that server's address into a scratch profile.
-3. Make a real clip on the page, then **Schedule** it and **Add to queue**, and open
-   the queue page.
+3. Make a real clip on the page, then **Schedule** it at a time and again with **Next
+   in queue** (one button since 2026-10-31T12:23:37+05:30, D-107), and open the queue page.
 4. Retime a row, edit a caption, cancel a row and Undo it, Pause and Resume, with two
    queue pages open to watch the other follow.
 5. Let a schedule fall due with WhatsApp blocked, and check that it fails cleanly to

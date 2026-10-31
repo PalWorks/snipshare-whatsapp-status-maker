@@ -1,6 +1,6 @@
 # API
 
-Last updated **2026-10-25T15:16:18+05:30**
+Last updated **2026-10-31T12:23:37+05:30**
 
 Every HTTP surface this project answers, and the messages the extension takes from
 the site. Read from the code: `wastatus/serve.py`, `wastatus/hosted.py`,
@@ -311,7 +311,7 @@ another origin is refused).
 | `words` | `url` or `videoId` | `{title, channel}` from YouTube's oEmbed | the page then posts them to `/api/words`; 20 s timeout |
 | `stop` | | | aborts the command on this port |
 | `schedule` | `url` (must be `<origin>/api/v1/clip?stem=`), `grant` (clip), `stem`, `name`, `caption` (cut to 1,024), `mode`, `due` (epoch ms) or `afterLast: true`, `action: "prepare"`, `limits: {pending, budgetBytes}` | `{schedule, note}` | keeps the clip on the computer, in parts, then queues it; only `prepare` is accepted. Codes `past`, `far`, `limit`, `budget`, `quota`, `network`, `gone`, `invalid`. Needs `features` to include `schedule` |
-| `queue-peek` | | `{next: [{id, due, caption, word}], count, needsYou}` | the next three; for the page's **Up next** |
+| `queue-peek` | | `{next: [{id, due, caption, word}], count, needsYou, lastDue, gapMinutes, quiet}`, the last three from 2.1.1: the last pending post's due time or null, the gap in minutes, quiet hours `{on, start, end}` | the next three; for the page's **Up next**, and the time on **Next in queue** (D-107). Read only |
 | `open-queue` | | `{opened: true}` | opens the queue page in a new active tab, or focuses it |
 
 Error codes the page may see (Scheduled Statuses added `past`, `far`, `limit`, `budget` and `quota`): `invalid`, `busy`, `paced`, `thumbnail`, `open`,

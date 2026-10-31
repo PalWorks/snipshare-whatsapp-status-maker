@@ -992,7 +992,7 @@ let staleTimer = null;
 
 // What the notice calls each action when it asks for a second press.
 const STALE_VERBS = { load: "Load", send: "Send", download: "Download",
-                      schedule: "Schedule", "queue-add": "Add to queue" };
+                      schedule: "Schedule" };
 
 function disarmStale() {
   clearTimeout(staleTimer);
@@ -1057,10 +1057,13 @@ const SCHED_MAX_MS = 30 * 86400000;      // and more
 // The extension's quiet hours are its own setting, which this page cannot see, so
 // the warning uses the default window and says "quiet hours" without claiming more.
 const QUIET = { start: 23 * 60, end: 7 * 60 };
-let schedMode = "schedule";              // or "queue": the same picker, after the last one
 let schedChoice = null;                  // the preset picked: a key, or "custom"
 let schedBusy = false;
 let upNextSeq = 0;
+// The extension's last `queue-peek` answer. From 2.1 it carries `lastDue`,
+// `gapMinutes` and `quiet`, the person's own settings, which this page cannot read
+// any other way; "Next in queue" names its time from them.
+let schedPeek = null;
 
 const inQuiet = (date) => {
   const minute = date.getHours() * 60 + date.getMinutes();
@@ -1080,7 +1083,54 @@ function describeDue(date, now = Date.now()) {
   return `${text}, ${away}`;
 }
 
-/* The presets that are still ahead (U9): a passed one is not offered at all. */
+/* When "Next in queue" will land, worked out as the extension's `Q.afterLast` does
+   (src/queue.js): after the last pending post by the gap, never under the minimum
+   lead, and moved out of quiet hours to where they end. Its 90 second spacing never
+   applies, because the time is always later than every pending post. Null when
+   the extension is older and does not send the three fields. */
+function nextInQueue(found = schedPeek, now = Date.now()) {
+  if (!found || !("lastDue" in found) || !Number(found.gapMinutes)) return null;
+  const last = Math.max(now, Number(found.lastDue) || 0);
+  let due = Math.max(last + Number(found.gapMinutes) * 60000, now + SCHED_MIN_MS);
+  const span = quietSpan(found.quiet);
+  if (span) {
+    const date = new Date(due);
+    const minute = date.getHours() * 60 + date.getMinutes();
+    const inside = span.start < span.end ? minute >= span.start && minute < span.end
+      : minute >= span.start || minute < span.end;
+    if (inside) {
+      date.setHours(Math.floor(span.end / 60), span.end % 60, 0, 0);
+      if (date.getTime() < due) date.setDate(date.getDate() + 1);
+      due = date.getTime();
+    }
+  }
+  return new Date(due);
+}
+
+/* Quiet hours as minutes of the day, as queue.js reads them: none when off or
+   unreadable, rather than a guess. */
+function quietSpan(quiet) {
+  if (!quiet || !quiet.on) return null;
+  const minutes = (hhmm) => {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
+    return match && Number(match[1]) < 24 && Number(match[2]) < 60
+      ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const start = minutes(quiet.start);
+  const end = minutes(quiet.end);
+  return start === null || end === null || start === end ? null : { start, end };
+}
+
+/* "Sat 6:00 PM", or with the date when it is a week or more away. */
+function shortDue(date, now = Date.now()) {
+  const far = date.getTime() - now >= 6 * 86400000;
+  return `${date.toLocaleDateString([], far
+    ? { weekday: "short", day: "numeric", month: "short" } : { weekday: "short" })} `
+    + date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/* Next in queue first, then the presets that are still ahead (U9): a passed one is
+   not offered at all. */
 function schedPresets(now = new Date()) {
   const at = (days, hour) => {
     const date = new Date(now);
@@ -1093,7 +1143,9 @@ function schedPresets(now = new Date()) {
     { key: "evening", label: "This evening, 6 PM", date: at(0, 18) },
     { key: "morning", label: "Tomorrow, 9 AM", date: at(1, 9) },
   ].filter((p) => p.date.getTime() - now.getTime() >= SCHED_MIN_MS);
-  list.push({ key: "last", label: "After the last one", date: null });
+  const next = nextInQueue(schedPeek, now.getTime());
+  list.unshift({ key: "last", label: next ? `Next in queue \u00b7 ${shortDue(next, now.getTime())}`
+    : "Next in queue", date: null });
   return list;
 }
 
@@ -1130,8 +1182,8 @@ function readSched() {
   const warn = $("sched-warn");
   warn.hidden = true;
   if (schedChoice === "last") {
-    words.textContent = "After the last post in your queue, with the usual gap. "
-      + "If the queue is empty, that gap from now.";
+    const next = nextInQueue();
+    words.textContent = next ? describeDue(next) : "After your last scheduled post";
     return { afterLast: true };
   }
   const value = $("sched-time").value;
@@ -1172,32 +1224,41 @@ function chooseSched(key) {
   hide($("sched-error"));
 }
 
-function openSched(mode) {
+function openSched() {
   if (!current || !HOSTED || !HOSTED.canSchedule()) return;
-  schedMode = mode;
   hide($("sched-error"));
-  $("sched-title").textContent = mode === "queue" ? "Add to the queue" : "Schedule this Status";
-  $("sched-save").textContent = mode === "queue" ? "Add to queue" : "Schedule it";
   $("sched-caption").value = captionText();
   const now = new Date();
   $("sched-time").min = localValue(new Date(now.getTime() + SCHED_MIN_MS));
   $("sched-time").max = localValue(new Date(now.getTime() + SCHED_MAX_MS));
   $("sched-pick").hidden = false;
-  const first = mode === "queue" ? "last" : schedPresets()[0].key;
   unhide($("sched"));
-  $("schedule").setAttribute("aria-expanded", String(mode === "schedule"));
-  $("queue-add").setAttribute("aria-expanded", String(mode === "queue"));
-  chooseSched(first);
+  $("schedule").setAttribute("aria-expanded", "true");
+  // Next in queue is the first preset and the one chosen, as Add to queue was.
+  chooseSched(schedPresets()[0].key);
   $("sched").scrollIntoView({ block: "nearest" });
-  (mode === "queue" ? $("sched-save") : $("sched-presets").querySelector(".chip")).focus();
+  $("sched-presets").querySelector(".chip").focus();
+  // The queue may have changed since Up next last asked: ask again, and name the
+  // time afresh if the person has not moved on from the picker or its choice.
+  HOSTED.peek().then((found) => {
+    if (!found || $("sched").hidden || schedBusy) return;
+    schedPeek = found;
+    const focused = document.activeElement && document.activeElement.dataset
+      ? document.activeElement.dataset.preset : null;
+    paintSchedPresets();
+    if (focused) {
+      const again = $("sched-presets").querySelector(`[data-preset="${focused}"]`);
+      if (again) again.focus();
+    }
+    if (schedChoice === "last") readSched();
+  });
 }
 
 function closeSched(focus = true) {
   if (schedBusy) return;
   hide($("sched"));
   $("schedule").setAttribute("aria-expanded", "false");
-  $("queue-add").setAttribute("aria-expanded", "false");
-  if (focus) (schedMode === "queue" ? $("queue-add") : $("schedule")).focus();
+  if (focus) $("schedule").focus();
 }
 
 /* Each code the extension's worker can answer with, in words that say what to do. */
@@ -1224,12 +1285,8 @@ function schedProblem(error) {
 // Opening the picker is the press that is held back by a clip older than the form,
 // as for Load; closing it is never held.
 $("schedule").addEventListener("click", (event) => {
-  if (!$("sched").hidden && schedMode === "schedule") return closeSched();
-  if (pastStale($("schedule"), event)) openSched("schedule");
-});
-$("queue-add").addEventListener("click", (event) => {
-  if (!$("sched").hidden && schedMode === "queue") return closeSched();
-  if (pastStale($("queue-add"), event)) openSched("queue");
+  if (!$("sched").hidden) return closeSched();
+  if (pastStale($("schedule"), event)) openSched();
 });
 $("sched-cancel").addEventListener("click", () => closeSched());
 $("sched").addEventListener("keydown", (event) => {
@@ -1313,6 +1370,7 @@ async function refreshUpNext() {
   const mine = ++upNextSeq;
   const found = await HOSTED.peek();
   if (mine !== upNextSeq) return;
+  if (found) schedPeek = found;
   const list = $("upnext-list");
   list.textContent = "";
   if (!found) return hide($("upnext"));

@@ -5,6 +5,65 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-107: One Schedule button, an Account menu on the tool page, no fine print in the footer
+
+**Date:** 2026-10-31T12:23:37+05:30
+**Status:** built on `feat/scheduling-r1`, uncommitted; extension 2.1.1
+
+The owner reviewed production on 2026-10-31 and asked for three changes.
+
+**1. One Schedule button.** The finished clip had **Schedule** and **Add to queue**
+side by side. Two buttons for one decision, "when", made the person choose twice. Now
+there is one **Schedule** button, full width of its cell; its picker opens on **Next in
+queue**, the first preset and the one chosen, which sends `afterLast: true` as Add to
+queue did, then the timed presets and the date and time field. The chip names the time
+in words ("Next in queue · Sat 6:00 PM") so the choice is not a blind one. Options
+weighed:
+
+- **The page works the time out from fields the extension adds to `queue-peek`
+  (chosen).** `lastDue`, `gapMinutes` and `quiet`, read only, from the person's own
+  settings, which a web page cannot read any other way. `nextInQueue` in `app.js` is
+  `Q.afterLast` in `src/queue.js`: after the last pending post by the gap, never under
+  the 2 minute lead, moved out of quiet hours to where they end; the 90 second spacing
+  never applies, because the time is always later than every pending post. A Node test
+  checks the two agree, and a scratch comparison over 5,100 cases found no difference.
+- **The extension answers with the finished time.** One rule instead of two, but the
+  time would be stale as soon as the picker had been open a minute, and a new command
+  widens what a page may ask (SECURITY.md). Rejected.
+- **No time, only words.** What the older extension gets: "Next in queue", with "After
+  your last scheduled post" under it. Kept as the fallback, so the page needs no newer
+  `EXTENSION_MIN_VERSION`.
+
+The stale preview two press check (D-105) applies to the one button as it did to both.
+
+**2. An Account menu.** The tool page's Account chip was a link to `/account`. It is
+now a menu button, the familiar avatar menu: **Profile**, **History**, **Scheduled
+Statuses** (only when the person's scheduling is on), **Extension**, **Admin** (admins
+only), then **Sign out**, which calls `/api/signout` as the account page does and goes
+to `/`. The WAI-ARIA menu button pattern: arrows, Home and End move, Escape closes and
+returns focus, Tab and a press elsewhere close; items are 44px tall; the menu stays
+inside a 360px screen. The site pages' own avatar (`nav.js`) is a plain link with no
+menu, so there was nothing to share; this lives in `hosted.js` alone. Rejected: a menu
+on every page, which nobody asked for and which would add a second pattern to keep
+right on pages that have their own navigation.
+
+**3. No fine print in the footer.** The site footer's paragraph saying the project is
+independent and experimental, and naming the trademarks, is removed from every page,
+with its unused `.foot__fine` style. The same statement stays where it is looked for:
+the Terms ("Not affiliated") and the home page's questions.
+
+**Extension 2.1.1.** 2.1.0 has been offered at `/download` since the morning's deploy,
+so the changed `queue-peek` answer needs its own number. `EXTENSION_MIN_VERSION` stays
+2.0.0: an older extension still schedules, it just shows no time on the chip.
+
+**Also fixed with it.** The snackbar (`nav.css`, every page) was centred by `left: 50%`
+and a transform. A fixed box with only a left edge shrinks to the half of the screen
+right of it, so on a phone the confirmation after scheduling wrapped a word to a line.
+It now sits between the two 16px gutters, its action sharing the line where both fit
+and dropping under it where they do not; the action is 40px tall with a mouse too.
+
+---
+
 ## D-106: The account page frames the extension's queue; a capture uses only a YouTube tab that answers
 
 **Date:** 2026-10-31T11:35:09+05:30

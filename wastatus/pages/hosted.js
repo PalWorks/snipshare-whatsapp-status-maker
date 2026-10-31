@@ -426,22 +426,150 @@ window.SnipShare = (() => {
   const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-  /* ── the way to the account page ───────────────────────── */
+  /* ── the account menu ──────────────────────────────────── */
 
-  // A link, not a panel: the account page holds the profile, history, keys and
-  // feedback, and this page keeps its whole height for the work.
-  function accountLink() {
+  /* The Account chip opens a short menu of the account page's sections, as an
+     avatar does on Google's pages: the account page holds the profile, history,
+     keys and feedback, and this page keeps its whole height for the work. The
+     WAI-ARIA menu button pattern: the chip says it has a menu and whether it is
+     open, the arrows, Home and End move through the items, Escape closes it and
+     gives the chip its focus back, Tab and a press anywhere else close it. The
+     items are built at each opening, because whether Scheduled Statuses and Admin
+     belong in it is known only once /api/state has answered. */
+  function accountItems() {
+    return [
+      { label: "Profile", href: "/account#profile" },
+      { label: "History", href: "/account#history" },
+      ...(scheduling.enabled ? [{ label: "Scheduled Statuses", href: "/account#scheduled" }] : []),
+      { label: "Extension", href: "/account#extension" },
+      ...(me.admin ? [{ label: "Admin", href: "/admin" }] : []),
+      { separator: true },
+      { label: "Sign out", signOut: true },
+    ];
+  }
+
+  function accountMenu() {
     const controls = document.querySelector(".topbar__controls");
-    const link = document.createElement("a");
-    link.className = "statuschip accountchip";
-    link.id = "account-chip";
-    link.href = "/account";
-    link.title = "Your account: profile, history, GIF keys, feedback";
-    link.innerHTML = `<span class="accountchip__initial" aria-hidden="true"></span><span>Account</span>`;
-    const face = link.querySelector(".accountchip__initial");
+    const wrap = document.createElement("div");
+    wrap.className = "accountmenu";
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "statuschip accountchip";
+    chip.id = "account-chip";
+    chip.title = "Your account";
+    chip.setAttribute("aria-label", "Account");
+    chip.setAttribute("aria-haspopup", "menu");
+    chip.setAttribute("aria-expanded", "false");
+    chip.setAttribute("aria-controls", "account-menu");
+    chip.innerHTML = '<span class="accountchip__initial" aria-hidden="true"></span><span class="accountchip__label">Account</span>'
+      + '<svg class="statuschip__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>';
+    const face = chip.querySelector(".accountchip__initial");
     if (window.SnipShareUI) SnipShareUI.avatar(face, data.picture || "", me.name || me.email);
     else face.textContent = (me.name || me.email || "?").trim().charAt(0).toUpperCase();
-    controls.prepend(link);
+    const menu = document.createElement("div");
+    menu.className = "accountmenu__list";
+    menu.id = "account-menu";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-labelledby", "account-chip");
+    menu.hidden = true;
+    wrap.append(chip, menu);
+    controls.prepend(wrap);
+
+    const items = () => [...menu.querySelectorAll('[role="menuitem"]')];
+    const isOpen = () => !menu.hidden;
+
+    function build() {
+      menu.textContent = "";
+      accountItems().forEach((item) => {
+        if (item.separator) {
+          const line = document.createElement("div");
+          line.setAttribute("role", "separator");
+          line.className = "accountmenu__separator";
+          menu.append(line);
+          return;
+        }
+        const element = document.createElement(item.signOut ? "button" : "a");
+        if (item.signOut) {
+          element.type = "button";
+          element.id = "account-signout";
+          element.addEventListener("click", signOut);
+        } else {
+          element.href = item.href;
+        }
+        element.className = "accountmenu__item";
+        element.setAttribute("role", "menuitem");
+        element.tabIndex = -1;
+        element.textContent = item.label;
+        menu.append(element);
+      });
+    }
+
+    /* Right aligned under the chip, and moved back inside the screen when a narrow
+       one would cut it off on either side. */
+    function place() {
+      menu.style.right = "";
+      const box = menu.getBoundingClientRect();
+      const room = document.documentElement.clientWidth - 8;
+      if (box.left < 8) menu.style.right = `${box.left - 8}px`;
+      else if (box.right > room) menu.style.right = `${box.right - room}px`;
+    }
+
+    function open(focusAt = 0) {
+      build();
+      menu.hidden = false;
+      chip.setAttribute("aria-expanded", "true");
+      place();
+      const list = items();
+      list[(focusAt + list.length) % list.length].focus();
+    }
+
+    function close(focusChip = false) {
+      if (!isOpen()) return;
+      menu.hidden = true;
+      chip.setAttribute("aria-expanded", "false");
+      if (focusChip) chip.focus();
+    }
+
+    async function signOut() {
+      const button = $("account-signout");
+      button.setAttribute("aria-busy", "true");
+      // As the account page signs out: only a sign-out the server confirmed leaves
+      // the page, because the front page with the session still alive would look
+      // signed out and not be.
+      const done = await fetch("/api/signout", { method: "POST",
+        headers: { "Content-Type": "application/json", "X-SnipShare": "1" }, body: "{}",
+        signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined })
+        .then((response) => response.ok).catch(() => false);
+      if (done) return location.assign("/");
+      button.removeAttribute("aria-busy");
+      close(true);
+      const text = "Could not sign out: SnipShare did not answer. Check the connection and try again.";
+      if (window.SnipShareUI) SnipShareUI.toast(text, { tone: "error" });
+    }
+
+    chip.addEventListener("click", () => (isOpen() ? close(true) : open(0)));
+    chip.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        open(event.key === "ArrowDown" ? 0 : -1);
+      }
+    });
+    menu.addEventListener("keydown", (event) => {
+      const list = items();
+      const at = list.indexOf(document.activeElement);
+      const go = (index) => { event.preventDefault(); list[(index + list.length) % list.length].focus(); };
+      if (event.key === "ArrowDown") go(at + 1);
+      else if (event.key === "ArrowUp") go(at - 1);
+      else if (event.key === "Home") go(0);
+      else if (event.key === "End") go(list.length - 1);
+      else if (event.key === "Escape") { event.preventDefault(); close(true); }
+      else if (event.key === "Tab") close(false);
+      else if (event.key === " " && at >= 0) { event.preventDefault(); list[at].click(); }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (isOpen() && !wrap.contains(event.target)) close(false);
+    });
+    window.addEventListener("resize", () => { if (isOpen()) place(); });
   }
 
   function makeNotes() {
@@ -480,7 +608,7 @@ window.SnipShare = (() => {
                         render: "render" };
 
   // This script sits at the end of the page, so everything it adds to is there.
-  accountLink();
+  accountMenu();
   makeNotes();
   retell();
   paint();

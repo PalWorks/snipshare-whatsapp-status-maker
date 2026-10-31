@@ -67,25 +67,31 @@ button[aria-busy="true"] { cursor: progress; }
 @keyframes skeleton-shine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 /* A short message at the foot of the screen, above the thumb, with at most one
-   action. It never covers what it is about for long. */
+   action. It never covers what it is about for long. Centred by `margin: auto`
+   between the two 16px gutters rather than by `left: 50%` and a transform: a fixed
+   box given only a left edge shrinks to the half of the screen right of it, which
+   on a phone wrapped the message a word to a line. The action shares the message's
+   line where both fit, and drops under it, to the right, where they do not. */
 .snackbar {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 1001;
+  position: fixed; left: 16px; right: 16px; z-index: 1001;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  display: flex; align-items: center; gap: 16px; max-width: min(560px, calc(100vw - 32px));
-  padding: 12px 16px; border-radius: 10px;
+  width: fit-content; max-width: 560px; margin: 0 auto; box-sizing: border-box;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+  gap: 4px 16px; padding: 12px 16px; border-radius: 10px;
   background: #2b2d31; color: #f1f3f4; font-size: 14.5px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .3);
 }
 .snackbar--error { background: #8c1d18; }
+.snackbar > span { flex: 1 1 auto; min-width: 0; }
 .snackbar__action {
-  flex: none; min-height: 36px; padding: 0 8px; border: 0; border-radius: 6px;
+  flex: none; min-height: 40px; padding: 0 8px; border: 0; border-radius: 6px;
   background: none; color: #8ee0b2; font: inherit; font-weight: 600; cursor: pointer;
 }
 .snackbar__action:hover { background: rgba(255, 255, 255, .08); }
 @media (prefers-reduced-motion: no-preference) {
   .snackbar:not([hidden]) { animation: snack-in 180ms ease-out; }
 }
-@keyframes snack-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes snack-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* The theme button in a page's header: one icon, the one now in force. */
 .themetoggle svg { display: none; }

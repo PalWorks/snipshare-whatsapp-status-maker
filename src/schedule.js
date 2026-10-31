@@ -1077,8 +1077,11 @@
     }
 
     // The SnipShare page's Up next: the next three, the count, and what needs the person.
+    // `lastDue`, `gapMinutes` and `quiet` are read only, so the page's "Next in queue"
+    // can name the time `Q.afterLast` will give, from this person's own settings.
     async function peek() {
       const sched = await load();
+      const s = await schedSettings();
       const live = Q.sorted(Q.pending(sched.items));
       return {
         next: live.slice(0, 3).map((item) => ({
@@ -1086,6 +1089,9 @@
         })),
         count: live.length,
         needsYou: needsYou(sched),
+        lastDue: live.length ? live[live.length - 1].due : null,
+        gapMinutes: Number(s.gapMinutes) || 180,
+        quiet: quietOf(s),
       };
     }
 

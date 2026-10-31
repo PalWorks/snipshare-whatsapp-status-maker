@@ -650,6 +650,30 @@ test("the page's Up next is the next three, the count and what needs the person"
   assert.equal(peek.needsYou, 0);
 });
 
+test("Up next also carries what the page needs to name the next-in-queue time, read only", async () => {
+  const fresh = world({ store: fakeArea({}) });
+  const empty = await fresh.s.peek();
+  assert.equal(empty.lastDue, null);
+  assert.equal(empty.gapMinutes, 180, "the extension's default gap");
+  assert.deepEqual(empty.quiet, { on: true, start: "23:00", end: "07:00" }, "and quiet hours");
+  const w = world();
+  await schedule(w, 30 * MIN, { stem: "b1" });
+  await schedule(w, 90 * MIN, { stem: "b2" });
+  const port = fakePort();
+  w.s.attach(port);
+  await port.ask("settings", { changes: { gapMinutes: 60, quietOn: false } });
+  const before = JSON.stringify(w.store.data.sched);
+  const peek = await w.s.peek();
+  assert.equal(JSON.stringify(w.store.data.sched), before, "peek changes nothing");
+  assert.equal(peek.lastDue, w.clock.t + 90 * MIN);
+  assert.equal(peek.gapMinutes, 60);
+  assert.deepEqual(peek.quiet, { on: false, start: "23:00", end: "07:00" });
+  // What app.js computes from those three fields is what an afterLast schedule gets.
+  const named = Math.max(peek.lastDue + peek.gapMinutes * MIN, w.clock.t + 2 * MIN);
+  const { answer } = await schedule(w, 0, { stem: "b3", due: undefined, afterLast: true });
+  assert.equal(answer.schedule.due, named);
+});
+
 // -- time ---------------------------------------------------------------------------------------
 
 test("a due time is an instant: a zone change or a daylight saving change does not move it", async () => {

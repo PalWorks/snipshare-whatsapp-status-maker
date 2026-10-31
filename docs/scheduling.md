@@ -1024,7 +1024,7 @@ behaviour, not the lines. Decisions taken while building are D-105.
 | `src/whatsapp.js`, `src/wa-bridge.js` | the composer steps now wait on page changes rather than sleeping, return the caption read back, never press Send, and the bridge acknowledges every chunk before the next is sent |
 | `src/queue.html`, `queue.css`, `queue-page.js` | the queue page (Section 4's table): Needs you, Next up, the table with in row time and caption edits, Cancel with Undo, Pause and Resume, history, the budget, the quiet test, the run log. Mobile first |
 | `src/popup.*` | the scheduling settings, saved as each control changes, and **Open the queue** |
-| `wastatus/web/*`, `wastatus/pages/hosted.*` | **Schedule** and **Add to queue** beside **Load into WhatsApp** (which stays primary), the picker with presets and the time in words, **Up next**, the Scheduled link, and one line on a phone. Hidden in the local tool |
+| `wastatus/web/*`, `wastatus/pages/hosted.*` | **Schedule** beside **Load into WhatsApp** (which stays primary), the picker with **Next in queue** first and the presets, the time in words, **Up next**, the Scheduled link, and one line on a phone. Hidden in the local tool. Until 2026-10-31T12:23:37+05:30 there was a separate **Add to queue** button; see the section below and D-107 |
 | `wastatus/accounts.py`, `portal.py`, `pages/admin.js` | per person limits and the pilot switch, `scheduling` in `/api/state`, `POST /api/admin/limits`, the admin page's editor, the report source `schedule` |
 
 Every run is **Prepare**: the clip is put in WhatsApp's composer and the person presses
@@ -1073,6 +1073,27 @@ a YouTube tab that cannot answer (IN-14, docs/extension.md). Extension version s
 | The account section | driven in headless Chromium with the unpacked extension at 360 and 1280 pixels, light and dark; the "extension too old" state is [Unverified], not driven in a browser |
 | The capture's tab rule | covered by `src/test/capture.test.js` with fake tabs; [Unverified] against the owner's own open tabs |
 | Unit tests | 156 Node tests pass; pytest 1593 passed, 7 skipped (counted 2026-10-31 after commit d917694) |
+
+### Added 2026-10-31T12:23:37+05:30: one Schedule button (D-107)
+
+From the owner's review of production. **Add to queue** is gone; **Schedule**'s picker
+opens on **Next in queue**, chosen, which sends `afterLast: true`. Its chip names the
+time ("Next in queue · Sat 6:00 PM"), worked out by `nextInQueue` in `app.js` exactly
+as `Q.afterLast` does, from three read only fields `queue-peek` now returns:
+`lastDue` (the last pending post's time, or null), `gapMinutes` and `quiet` (`{on,
+start, end}`). An extension older than 2.1.1 sends none of them and the chip reads
+"Next in queue", the line under it "After your last scheduled post". Extension
+**2.1.1**; `EXTENSION_MIN_VERSION` stays 2.0.0. The plan's wording above, which names
+Add to queue, is left as the plan was written.
+
+**Table SC-22: verified for the change**
+
+| Claim | Status |
+|---|---|
+| The time on the chip is what the extension saves | headless Chromium, real unpacked extension, local server: with an empty queue the chip read now plus 180 minutes and the saved time was 25 ms after it; with one post queued it read that post plus 180 minutes |
+| The page's rule equals `Q.afterLast` | a Node test from `queue-peek`'s fields; a scratch comparison over 5,100 cases (quiet hours on, off and elsewhere, four gaps, every 17 minutes of a day) found no difference |
+| The older extension's words | driven with `peek` stubbed to the 2.1.0 answer |
+| Unit tests | 157 Node tests pass; pytest 1613 passed, 7 skipped (2026-10-31T12:23:37+05:30) |
 
 Next: Phase 0 by the owner, then a week of the owner's use of Prepare, then confirmed
 Send (Phase 8), Release 2 and Release 3, in that order unless the owner says otherwise.

@@ -2,6 +2,37 @@
 
 Human readable history. Newest first.
 
+## 2026-10-31, fifty-ninth pass
+
+Written **2026-10-31T12:23:37+05:30**. From the owner's review of production; decision D-107.
+
+### One Schedule button
+
+**Add to queue** is gone. The finished clip has one **Schedule** button, whose picker
+opens on **Next in queue**, chosen, with the time it will land ("Next in queue · Sat 6:00
+PM"), then In one hour, This evening and Tomorrow morning (passed ones hidden) and the
+date and time field. The hint reads "Puts the clip in WhatsApp at the time you choose,
+or next in your queue. You press Send." The time comes from three read only fields the
+extension now adds to `queue-peek`: `lastDue`, `gapMinutes` and `quiet`. An older
+extension gets "Next in queue" and "After your last scheduled post".
+
+### An Account menu on the tool page
+
+The Account chip opens a menu: Profile, History, Scheduled Statuses (when scheduling is
+on), Extension, Admin (admins), Sign out. Keyboard and screen reader friendly, 44px
+items, kept inside a phone's screen, both themes.
+
+### The footer, and the toast on a phone
+
+The footer's "independent, experimental project" paragraph is removed from every page;
+the Terms and the home page's questions still say it. The snackbar now uses the
+screen's width on a phone instead of half of it, and its action is 40px tall.
+
+### Extension 2.1.1
+
+For the `queue-peek` fields. `EXTENSION_MIN_VERSION` stays 2.0.0. Tests: 157 Node,
+pytest 1613 passed and 7 skipped.
+
 ## 2026-10-31, fifty-eighth pass
 
 Written **2026-10-31T11:21:01+05:30**.

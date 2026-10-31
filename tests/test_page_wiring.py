@@ -938,10 +938,52 @@ class TestSchedulingControls:
     def test_the_primary_stays_load_into_whatsapp(self, page):
         assert 'id="load">Load into WhatsApp</button>' in page
         assert re.search(r'id="schedule"[^>]*>Schedule</button>', page, re.S)
-        assert re.search(r'id="queue-add"[^>]*>Add to queue</button>', page, re.S)
-        # Neither is the filled button: only #load and the picker's own save are.
-        assert "button--primary" not in re.search(
-            r'<div class="doer" id="doer-schedule".*?</div>\s*<span', page, re.S).group(0)
+        # It is not the filled button: only #load and the picker's own save are.
+        doer = re.search(r'<div class="doer" id="doer-schedule".*?</div>', page, re.S).group(0)
+        assert "button--primary" not in doer
+
+    def test_one_schedule_button_and_no_separate_add_to_queue(self, page, script):
+        """The owner's choice, 2026-10-31: one Schedule button, whose picker offers
+        the queue first, rather than Schedule and Add to queue side by side."""
+        doer = re.search(r'<div class="doer" id="doer-schedule".*?</div>', page, re.S).group(0)
+        assert doer.count("<button") == 1
+        assert 'id="queue-add"' not in page and "Add to queue" not in page
+        assert "queue-add" not in script and "schedMode" not in script
+        assert ("Puts the clip in WhatsApp at the time you choose, or next in your queue. "
+                "You press Send.") in re.sub(r"\s+", " ", doer)
+        css = (WEB.parent / "pages" / "hosted.css").read_text(encoding="utf-8")
+        assert "schedbtns" not in css and "schedbtns" not in page
+        styles = (WEB / "app.css").read_text(encoding="utf-8")
+        assert ".doer .button { width: 100%; }" in styles, "full width of its cell"
+
+    def test_next_in_queue_is_the_first_preset_and_the_one_chosen(self, script):
+        body = script[script.index("function schedPresets"):script.index("const localValue")]
+        assert 'list.unshift({ key: "last"' in body
+        assert "Next in queue \\u00b7 ${shortDue(next, now.getTime())}" in body
+        assert '"Next in queue", date: null' in body, "an older extension: no time"
+        opened = script[script.index("function openSched"):script.index("function closeSched")]
+        assert "chooseSched(schedPresets()[0].key)" in opened
+        assert "HOSTED.peek()" in opened, "the queue is asked afresh when the picker opens"
+        read = script[script.index("function readSched"):script.index("function chooseSched")]
+        assert '"After your last scheduled post"' in read
+        assert "return { afterLast: true };" in read
+
+    def test_the_next_in_queue_time_follows_the_extensions_own_rule(self, script):
+        """Q.afterLast in src/queue.js: after the last pending post by the gap, never
+        under the minimum lead, moved out of quiet hours to where they end. The
+        fields are the extension's (`queue-peek`), since the page cannot read the
+        person's settings; src/test/schedule.test.js checks the two agree."""
+        body = script[script.index("function nextInQueue"):script.index("function quietSpan")]
+        assert '!("lastDue" in found) || !Number(found.gapMinutes)' in body
+        assert "Math.max(now, Number(found.lastDue) || 0)" in body
+        assert "Math.max(last + Number(found.gapMinutes) * 60000, now + SCHED_MIN_MS)" in body
+        assert "quietSpan(found.quiet)" in body
+        assert "if (found) schedPeek = found;" in script, "Up next's answer is kept for it"
+        worker = (WEB.parent.parent / "src" / "schedule.js").read_text(encoding="utf-8")
+        peek = worker[worker.index("async function peek()"):]
+        peek = peek[:peek.index("\n    }\n")]
+        for field in ("lastDue:", "gapMinutes:", "quiet: quietOf(s)"):
+            assert field in peek, field
 
     def test_the_save_button_is_inside_the_picker_form(self, page):
         assert inside(page, '<form class="sched" id="sched"', "</form>", 'id="sched-save"')
@@ -966,7 +1008,7 @@ class TestSchedulingControls:
         for call in ("HOSTED.schedule(", "HOSTED.peek()", "HOSTED.openQueue()"):
             assert call in script
         assert 'id="schedule"' not in script, "the buttons are markup, not built by script"
-        for name in ("schedule", "queue-add", "queue-open", "sched-cancel"):
+        for name in ("schedule", "queue-open", "sched-cancel"):
             assert f'$("{name}").addEventListener("click"' in script
 
     def test_up_next_goes_to_the_accounts_scheduled_section(self, script):
@@ -1023,10 +1065,157 @@ class TestSchedulingControls:
         css = (WEB.parent / "pages" / "hosted.css").read_text(encoding="utf-8")
         assert "#doer-schedule[hidden]" in css and ".sched[hidden]" in css
 
-    def test_a_stale_clip_holds_back_both_schedule_buttons_once(self, script):
-        assert ('schedule: "Schedule", "queue-add": "Add to queue"' in script)
+    def test_a_stale_clip_holds_back_the_schedule_button_once(self, script):
+        assert 'download: "Download",\n                      schedule: "Schedule" };' in script
         assert 'pastStale($("schedule"), event)' in script
-        assert 'pastStale($("queue-add"), event)' in script
         # Closing an open picker is checked before the stale press, so it is never held.
         body = script[script.index('$("schedule").addEventListener("click"'):]
         assert body.index("closeSched()") < body.index('pastStale($("schedule")')
+
+
+class TestTheSiteFooterHasNoFinePrint:
+    """The owner's review, 2026-10-31: the footer's "independent, experimental
+    project" paragraph is gone from every site page. The same statement stays where
+    it is asked about, in the Terms and the home page's questions."""
+
+    PAGES = WEB.parent / "pages"
+
+    def test_the_footer_carries_no_affiliation_paragraph(self):
+        layout = (self.PAGES / "layout.html").read_text(encoding="utf-8")
+        footer = layout[layout.index("<footer"):layout.index("</footer>")]
+        assert "foot__fine" not in layout
+        assert "experimental" not in footer and "affiliated" not in footer
+        assert "Contact:" in footer and 'href="/terms"' in footer
+
+    def test_its_style_went_with_it(self):
+        assert "foot__fine" not in (self.PAGES / "site.css").read_text(encoding="utf-8")
+
+    def test_the_terms_and_the_questions_still_say_it(self):
+        terms = (self.PAGES / "terms.html").read_text(encoding="utf-8")
+        assert "<h2>Not affiliated</h2>" in terms
+        home = (self.PAGES / "home.html").read_text(encoding="utf-8")
+        assert "independent experiment" in home
+
+
+@pytest.fixture(scope="module")
+def hosted() -> str:
+    return (WEB.parent / "pages" / "hosted.js").read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def css() -> str:
+    return (WEB.parent / "pages" / "hosted.css").read_text(encoding="utf-8")
+
+
+class TestTheAccountMenu:
+    """The app page's Account chip opens a menu of the account page's sections
+    (owner's review, 2026-10-31), on the WAI-ARIA menu button pattern. The site
+    pages' own avatar is a plain link with no menu (nav.js), so there was nothing to
+    share, and this lives in hosted.js alone."""
+
+    def test_the_chip_is_a_menu_button(self, hosted):
+        body = hosted[hosted.index("function accountMenu"):]
+        assert 'document.createElement("button")' in body
+        assert 'chip.type = "button"' in body
+        for attribute in ('"aria-haspopup", "menu"', '"aria-expanded", "false"',
+                          '"aria-controls", "account-menu"'):
+            assert attribute in body, attribute
+        assert 'menu.setAttribute("role", "menu")' in body
+        assert 'element.setAttribute("role", "menuitem")' in body
+        assert 'setAttribute("role", "separator")' in body
+        assert "accountLink" not in hosted and 'link.href = "/account"' not in hosted
+
+    def test_the_items_and_where_they_go(self, hosted):
+        body = hosted[hosted.index("function accountItems"):hosted.index("function accountMenu")]
+        order = ['"Profile", href: "/account#profile"', '"History", href: "/account#history"',
+                 '"Scheduled Statuses", href: "/account#scheduled"',
+                 '"Extension", href: "/account#extension"', '"Admin", href: "/admin"',
+                 "separator: true", '"Sign out", signOut: true']
+        at = [body.index(item) for item in order]
+        assert at == sorted(at), "in this order"
+        assert "scheduling.enabled ? [{ label: \"Scheduled Statuses\"" in body
+        assert "me.admin ? [{ label: \"Admin\"" in body
+
+    def test_the_account_sections_it_names_exist(self):
+        page = (WEB.parent / "pages" / "account.html").read_text(encoding="utf-8")
+        for name in ("profile", "history", "scheduled", "extension"):
+            assert f'id="{name}"' in page, name
+
+    def test_sign_out_is_the_account_pages_own(self, hosted):
+        account = (WEB.parent / "pages" / "account.js").read_text(encoding="utf-8")
+        call = ('fetch("/api/signout", { method: "POST",\n'
+                '      headers: { "Content-Type": "application/json", "X-SnipShare": "1" }, body: "{}",')
+        assert call in account
+        body = hosted[hosted.index("async function signOut"):]
+        assert ('fetch("/api/signout", { method: "POST",\n'
+                '        headers: { "Content-Type": "application/json", "X-SnipShare": "1" }, body: "{}",') in body
+        assert 'if (done) return location.assign("/");' in body
+        assert 'if (done) return location.assign("/");' in account, "the same destination"
+
+    def test_the_keys_the_pattern_asks_for(self, hosted):
+        body = hosted[hosted.index("function accountMenu"):]
+        for key in ('"ArrowDown"', '"ArrowUp"', '"Home"', '"End"', '"Escape"', '"Tab"', '" "'):
+            assert f"event.key === {key}" in body, key
+        assert "close(true)" in body, "Escape gives the chip its focus back"
+        assert 'document.addEventListener("pointerdown"' in body, "a press elsewhere closes it"
+        assert "element.tabIndex = -1" in body, "roving focus: items are not tab stops"
+
+    def test_it_is_built_on_the_page(self, hosted):
+        assert "  accountMenu();\n" in hosted
+
+    def test_items_are_thumb_sized_and_the_menu_stays_on_screen(self, css, hosted):
+        item = css[css.index(".accountmenu__item {"):]
+        item = item[:item.index("}")]
+        assert re.search(r"min-height:\s*4[0-9]px", item)
+        menu = css[css.index(".accountmenu__list {"):]
+        menu = menu[:menu.index("}")]
+        assert "right: 0" in menu and "max-width: calc(100vw - 16px)" in menu
+        assert ".accountmenu__list[hidden] { display: none !important; }" in css
+        assert "function place()" in hosted and "clientWidth - 8" in hosted
+
+    def test_it_uses_the_pages_tokens_so_both_themes_follow(self, css):
+        menu = css[css.index(".accountmenu__list {"):css.index(".accountmenu__separator")]
+        assert "#" not in re.sub(r"/\*.*?\*/", "", menu, flags=re.S), "no fixed colours"
+        for token in ("var(--surface)", "var(--text)", "var(--border)", "var(--surface-sunken)"):
+            assert token in menu, token
+
+    def test_the_label_hides_on_a_phone_by_its_own_class(self, css):
+        assert ".accountchip__label { display: none; }" in css
+        assert "span:last-child" not in css, "the caret is the last child now"
+
+
+@pytest.fixture(scope="module")
+def rule() -> str:
+    """The snackbar's own rule in nav.css."""
+    nav = (WEB.parent / "pages" / "nav.css").read_text(encoding="utf-8")
+    body = nav[nav.index(".snackbar {"):]
+    return body[:body.index("}")]
+
+
+class TestTheToastUsesThePhonesWidth:
+    """Owner's review, 2026-10-31: on a 360px phone the confirmation after
+    scheduling wrapped a word to a line beside its action. A fixed box placed by
+    `left: 50%` and pulled back by a transform shrinks to the half of the screen
+    right of that edge, whatever its max-width says (nav.css, shared by every
+    page). It is placed between two 16px gutters instead."""
+
+    def test_it_sits_between_the_gutters_not_from_the_middle(self, rule):
+        assert "left: 16px; right: 16px;" in rule
+        assert "margin: 0 auto" in rule and "width: fit-content" in rule
+        assert "left: 50%" not in rule and "translateX(-50%)" not in rule
+
+    def test_the_action_drops_under_the_words_when_they_do_not_share_a_line(self, rule):
+        assert "flex-wrap: wrap" in rule and "justify-content: flex-end" in rule
+        nav = (WEB.parent / "pages" / "nav.css").read_text(encoding="utf-8")
+        assert ".snackbar > span { flex: 1 1 auto; min-width: 0; }" in nav
+
+    def test_its_action_is_a_40px_target_with_a_mouse_too(self):
+        nav = (WEB.parent / "pages" / "nav.css").read_text(encoding="utf-8")
+        action = nav[nav.index(".snackbar__action {"):]
+        assert "min-height: 40px" in action[:action.index("}")]
+
+    def test_the_entrance_no_longer_carries_the_old_centring(self):
+        nav = (WEB.parent / "pages" / "nav.css").read_text(encoding="utf-8")
+        frames = nav[nav.index("@keyframes snack-in"):]
+        frames = frames[:frames.index("\n")]
+        assert "-50%" not in frames
