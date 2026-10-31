@@ -2,8 +2,9 @@
 
 ## Current state, stated plainly
 
-**1569 offline tests pass and 7 are skipped, and 152 Node tests pass**, counted
-2026-10-31T09:55:06+05:30 on the Scheduled Statuses build, after the fixes from its independent review (the 1509 offline
+**1593 offline tests pass and 7 are skipped, and 156 Node tests pass**, counted
+2026-10-31 after commit d917694 (account section and capture fix), recorded 2026-10-31T11:35:09+05:30 (earlier, 1569 and 152 at
+2026-10-31T09:55:06+05:30 on the Scheduled Statuses build, after the fixes from its independent review; the 1509 offline
 tests counted 2026-10-25T22:43:40+05:30, after the second security pass (D-101), whose tests are
 `TestTheSecondSecurityPass` and `TestARequestIsReadOneWay` in `tests/test_portal.py`).
 They cover timestamp parsing, transliteration, output naming, retention, logging,
@@ -80,6 +81,8 @@ If the composer opens, the size is acceptable. If it times out, it is not.
 | `src/test/place.test.js` | the ladder with fake tabs and windows: quietest first with no record, then the order learned from `placeStats`, a rung skipped for a week after three failures, a load that moved focus counting against its rung, S3 and S5 only when allowed, the focus guard (our own focus change put back, the person's own left alone), the bridge's acknowledgement of every slice, one load at a time, and the person using WhatsApp holding a run back |
 | `src/test/schedule.test.js` | the stored queue against a fake clock, store, alarms and notifications: a schedule keeping its clip and arming the alarms, a bad time or a limit refused with a code, prewarm then a quiet run then prepared, a damaged clip never reaching WhatsApp, waiting a minute at a time then asking, catch up and missed, a worker stopped at each stage and the next one carrying on, Undo inside ten seconds, stale revisions refused, pause and resume's choices, lost alarms rebuilt on every wake, and a schedule alarm never driving the clip job |
 | `tests/test_extension.py` (additions) | the worker loads `queue.js`, `custody.js`, `place.js`, `schedule.js` in that order before its own code, every script passes `node --check`, and the manifest asks for exactly the permissions in SECURITY.md Table SE-4 and no `background` |
+| `src/test/capture.test.js` | the capture's tab choice with fake tabs, added 2026-10-31T11:35:09+05:30: a tab showing the video that does not answer is never chosen and so never brought forward, a tab whose player is not ready is not chosen, a ready tab is chosen with what it said even past a silent one for the same video, and tabs of other videos and discarded tabs are not asked at all |
+| `tests/test_extension.py`, `tests/test_page_wiring.py`, `tests/test_portal.py` (additions, 2026-10-31T11:35:09+05:30) | the manifest exposes only the four queue files, to the local addresses in the repository copy and to the site alone in a build; the framed queue tells its height to the site's origin only and takes messages only from the site's own parent; Up next's Scheduled goes to the account's section; the account page's policy frames the extension and nothing else, an id not of Chrome's shape adds nothing, and `/api/account` carries the pilot switch |
 | `tests/test_scheduling_limits.py` | the server's per person limits: defaults for a person and for an admin, an older database gaining the columns, each figure set and put back, an admin switched off, the daily clip and upload limits following the person, nonsense refused with nothing changed, deleting a person taking their figures, a person told their own, only an admin changing anyone's, the refusal coming before the body is read, a failure report with the source `schedule` |
 | `tests/test_page_wiring.py` (additions) | the Schedule controls start hidden and only the hosted script shows them, **Load into WhatsApp** stays the primary, the save button is inside the picker's form, the picker says what it does, and the phone line is the planned one |
 | `tests/test_smoke.py` | one real run: exit code, the output files and the absence of the opt in one, filename shape, 1080x1920 h264 and aac, duration, ASCII caption, the run record, and no leftover work directory |

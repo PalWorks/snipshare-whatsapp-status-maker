@@ -5,6 +5,58 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-106: The account page frames the extension's queue; a capture uses only a YouTube tab that answers
+
+**Date:** 2026-10-31T11:35:09+05:30
+**Status:** built on `feat/scheduling-r1`; the "extension too old" state and Phase 0 not yet run on the owner's Chrome
+
+Two choices made on 2026-10-31 after D-105, both in the commit that follows it.
+
+**1. Scheduled Statuses in the account page is the extension's own queue page in a
+frame, not a second queue.** The owner asked to see and manage scheduled videos from
+the account page. The queue lives only in the extension (docs/scheduling.md, SC-D2): the
+clips are in the person's browser and the server holds none of them. So the page can
+show a queue only by asking the extension. Options weighed:
+
+- **Frame `queue.html?embed=1` (chosen).** One queue UI to build, test and keep right;
+  every future change to the queue appears in both places. Costs: the four queue files
+  become web accessible (to the site alone), the account page's `frame-src` names the
+  extension, and the page and frame talk by `postMessage` with origins checked both
+  ways. Docs: docs/account-page.md, Tables AP-8 and AP-9.
+- **Draw the table again in the account page, fed over the external port.** No frame
+  and no web accessible files, but a second implementation of in row editing, Undo,
+  Pause and Resume, and every state; it would drift from the queue page, and each
+  command would need to be added to the external port, widening what a web page may
+  ask of the extension (SECURITY.md, "Who may command the queue"). Rejected.
+- **Only link to the queue's own tab.** What Up next did before. Nothing new to secure,
+  but the queue stays away from the page the owner works in. Kept as the fallback
+  when the frame stays silent for 6 seconds.
+
+The section is offered only when `scheduling.enabled` (in `/api/account`) is on, so
+the pilot switch still decides who sees it. **Extension version stays 2.1.0**: it has
+not been distributed beyond the owner's machine, and `EXTENSION_MIN_VERSION` stays
+2.0.0 so nobody is forced to update.
+
+**2. A capture uses an existing YouTube tab only if its player answers ready, and
+never brings it forward.** The owner reported on 2026-10-31 a capture stuck at "Getting
+the video" with the video already open in another tab (IN-14). A tab open from before
+the extension was installed or reloaded has no content scripts, so it cannot answer;
+the extension used to bring it forward, wait 45 seconds on it and leave the person
+there. Options weighed: ask the person to reload the tab (a step the page cannot
+explain well); inject the scripts into the old tab (needs more host access and still
+leaves a tab the person did not open being driven); **ask the tab, and if it is silent
+open the extension's own muted tab (chosen)**, which is also what happens when the
+video is open nowhere. The page's tab is made active again whether the video opened or
+not, so a failure is read where it was asked for.
+
+**Unverified.** The "extension too old" state of the section has not been driven in a
+browser. The frame has been driven only in the bundled headless Chromium. The capture
+fix is covered by `src/test/capture.test.js`; it was not run against the owner's open
+tabs here. The release is being merged to main, pushed and deployed on the owner's
+instruction of 2026-10-31.
+
+---
+
 ## D-105: Scheduled Statuses, Release 1: what was decided while building it
 
 **Date:** 2026-10-31T01:51:00+05:30

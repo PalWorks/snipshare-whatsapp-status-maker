@@ -1,6 +1,6 @@
 # Incidents
 
-Last updated **2026-10-25T15:21:02+05:30**
+Last updated **2026-10-31T11:35:09+05:30**
 
 Postmortems: what went wrong, what it cost, why, and what changed so it does not
 happen again. Every entry is drawn from the project's own record, and each names the
@@ -28,6 +28,7 @@ nothing because they were found first, and the lesson is the same.
 | IN-11 | 2026-10-25 | Two faults found only in production: mail refused, Turnstile never drawn | owner notifications and the request form broken at launch | none |
 | IN-12 | 2026-10-25 | Every clip opened on a black frame | black thumbnails in WhatsApp | D-094 |
 | IN-13 | 2026-10-25 | The pre-publication audit | latent faults, one of them a breach of D-071 | D-071, D-093 |
+| IN-14 | 2026-10-31 | A capture stuck at "Getting the video" when the video was open in an older tab | a clip could not be made until abandoned | D-106 |
 
 ---
 
@@ -291,6 +292,27 @@ nothing because they were found first, and the lesson is the same.
   grows. Re-read the decisions against the code before a wider audience arrives.
 - **Source:** the audit notes of 2026-10-25; [CHANGELOG.md](CHANGELOG.md);
   [LIMITATIONS.md](LIMITATIONS.md).
+
+## IN-14: a capture stuck at "Getting the video"
+
+- **Date:** 2026-10-31, reported by the owner.
+- **What happened:** the page showed "Getting the video" and went no further when the
+  video was already open in another tab, and the person was left on that tab.
+- **Impact:** a clip could not be made until the capture was abandoned; no Status
+  was affected.
+- **Root cause:** a YouTube tab open from before the extension was installed or
+  reloaded has no content scripts, so it has no recorder and cannot answer. The
+  extension chose any tab showing the video, brought it forward and waited 45 seconds
+  on it. [Inference] the 45 seconds is the open timeout in `src/sw.js`; the cause was
+  read from the code and the report, not reproduced on the owner's tabs.
+- **Fix:** an existing tab is used only if its player answers ready, read where it
+  is and never brought forward; otherwise the extension opens its own muted tab, and
+  the page's tab is made active again whether or not the video opened. Tests in
+  `src/test/capture.test.js`.
+- **Lesson:** a tab the extension did not open may predate it. Ask before relying on
+  one, and never move the person to a place that cannot answer.
+- **Source:** [DECISIONS.md](DECISIONS.md) D-106; [CHANGELOG.md](CHANGELOG.md), fifty-eighth
+  pass; [docs/extension.md](docs/extension.md).
 
 ---
 

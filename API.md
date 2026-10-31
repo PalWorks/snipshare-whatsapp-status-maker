@@ -222,7 +222,7 @@ feedback body 12,000,000.
 | `POST /api/grant` | `{purpose: clip, stem}` | `{grant, server, expires_in: 900}`, good for that one clip | 404 no such clip |
 | `POST /api/report` | `source` (`capture`, `load`, `page`, `words`, `schedule`), `phase`, `code`, `detail`, `versions` | `{recorded: true}`, or `{recorded: false}` past 30 an hour | 400 unknown source |
 | `POST /api/feedback` | `kind` (`idea`, `problem`, `question`, `other`), `subject` (1 to 120), `message` (3 to 3,000), `name`, `attachments: [{data}]` (at most 3, each at most 4 MB, re-encoded as JPEG), `code`, `versions` | `{sent: true, mailed}`; kept as a report whether or not the mail went | 400, 413, 429 over 5 an hour |
-| `GET /api/account` | | `{profile, sessions, usage, gifs, kept: 10, history_days: 90, contact}` | |
+| `GET /api/account` | | `{profile, sessions, usage, gifs, kept: 10, history_days: 90, contact, scheduling: {enabled}}` | `scheduling.enabled` is the person's pilot switch alone; the account page offers Scheduled Statuses only when it is on. The figures the extension enforces stay in `/api/state`. Added 2026-10-31T11:35:09+05:30 |
 | `GET /api/account/history` | | `{days: [14 x {day, clips, failures, upload_bytes}], clips: [{at, video_id, title, channel, mode, start, end, stem, ok, seconds, error, kept}], usage}` | |
 | `POST /api/account/profile` | `{name}` | the person | 400 empty or over 120 |
 | `POST /api/account/sessions/end` | `{id}` or `{others: true}` | `{ended, sessions}` | 400 the current one (use Sign out) |

@@ -197,6 +197,9 @@ Written **2026-10-25T15:11:42+05:30**. Everything else the audit found is fixed
 | Scheduling is a pilot, off for everyone but the admins until an admin switches a person on | Table SC-10 | the owner, per person |
 | Desktop Chrome with the extension only | a phone runs no extensions; the page says so in one line | none planned |
 | From a link and the bulk bar do not exist yet | Releases 2 and 3 | after Phase 0, a week of use, and the owner's word |
+| [Unverified] the account section's "extension too old" state was not driven in a browser (added 2026-10-31T11:35:09+05:30) | the other states were driven in headless Chromium; this one needs an extension older than 2.1.0, and none was built | load an older build against the local server and look, or the owner meets it |
+| Phase 0 is still pending (added 2026-10-31T11:35:09+05:30) | the release is deployed before the owner has run it; the ladder learns per machine and a notification asks if no quiet rung works | the owner: **Try quiet mode now (nothing is sent)** on the queue page |
+| The account section works only where the extension is installed and answers | the queue is in the extension; after 6 seconds of silence the frame is replaced by a link that opens the queue's own tab | none planned |
 
 ## Table LI-12: SnipShare, 2026-10-25
 

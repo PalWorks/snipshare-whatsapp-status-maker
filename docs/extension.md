@@ -271,3 +271,28 @@ undiscardable until the composer is closed, for 6 hours at most.
 
 [Unverified] on the owner's Chrome: nothing here has run against a real WhatsApp Web,
 and Phase 0 has not been run.
+
+### The account page's frame and the capture tab rule, 2026-10-31T11:35:09+05:30
+
+**Table EX-7: what the queue page gains**
+
+| Piece | What it is |
+|---|---|
+| `web_accessible_resources` | `queue.html`, `queue.css`, `queue.js`, `queue-page.js`, to the site alone (local addresses in the repository copy; `scripts/build_extension.py` writes the site). Needed so the account page can frame the queue |
+| Embed mode | `queue.html?embed=1&theme=<system, light or dark>`: no header of its own, the site's theme, its height told to the page after every change of layout, its toast kept in the part of the frame on screen. It loads `config.js` for the site's origin, and refuses to draw or connect if an ancestor is not the site |
+| `open-queue` | also what the account section's fallback asks when the frame is silent for 6 seconds |
+
+What crosses between the page and the frame is Table AP-9 in
+[account-page.md](account-page.md); the security reasoning is in SECURITY.md.
+
+**The capture's tab rule.** `videoTab(videoId)` in `src/sw.js` returns a tab only if it
+shows this video, is not discarded and its player answers `ready` for this video. The
+tab is read where it is and never brought forward. Otherwise the extension opens its
+own muted tab beside the page, in front only until its player is ready, and makes the
+page's tab active again whether or not the video opened. A tab open from before the
+extension was installed or reloaded has no content scripts and so never answers; that
+is what used to leave a capture at "Getting the video" (IN-14). Tests:
+`src/test/capture.test.js`.
+
+Version stays 2.1.0 and `EXTENSION_MIN_VERSION` 2.0.0. [Unverified] on the owner's
+open tabs: the rule is tested with fake tabs only.

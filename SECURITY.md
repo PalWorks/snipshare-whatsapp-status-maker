@@ -370,6 +370,33 @@ or change another person's figures (`POST /api/admin/limits` is refused before i
 is read for anyone else), every value is bounds checked, and the log line does not
 name the person.
 
+### The account page frames the extension's queue
+
+Added **2026-10-31T11:35:09+05:30**. docs/account-page.md, Tables AP-8 and AP-9; D-106.
+
+- **Web accessible resources are limited to the site.** The manifest exposes only
+  `queue.html`, `queue.css`, `queue.js` and `queue-page.js`, and `matches` names the
+  site alone: local addresses in the repository copy, replaced by
+  `scripts/build_extension.py` as for `externally_connectable`. No other page may load
+  them, and no `use_dynamic_url` is set, since the site frames a fixed address. What a
+  framing page can do is draw the page; it still cannot command the queue, which is
+  reached only over the internal port from the extension's own pages (above).
+- **`frame-src` names the extension only when the id is Chrome's shape.** The account
+  page's policy adds `chrome-extension://<id>` when the configured id is 32 letters a
+  to p, otherwise nothing, so the environment cannot widen the policy. Every other
+  directive, `frame-ancestors` included, is the shared one. [Inference] other
+  Chromium builds let extension resources past a page's policy as the bundled one did
+  with the entry removed; the entry stays as the explicit statement.
+- **`postMessage` is checked both ways.** The frame sends its height only to the
+  site's origin and takes messages only from the site and from its own parent. The page
+  sends theme and the visible part only to the extension's origin and takes the height
+  only from `chrome-extension://<id>` and from that frame's window, clamped to 120 to
+  20000 pixels. No message goes to `"*"`.
+- **The embedded page refuses to run when framed by another origin.** If any ancestor
+  (`location.ancestorOrigins`) is not the site, it neither draws nor connects.
+- Nothing here lets the site read the queue's contents: the page sees a frame's height,
+  nothing of what it holds.
+
 ## Hardening from the audit before publication
 
 Updated **2026-10-25T15:11:42+05:30**, when the repository was prepared to be made

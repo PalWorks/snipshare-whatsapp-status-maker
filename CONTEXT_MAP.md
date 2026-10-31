@@ -1,7 +1,7 @@
 # Context map
 
 Which file to read for what. Start here. Last updated
-**2026-10-31T01:53:14+05:30**, with Scheduled Statuses Release 1 (earlier: 2026-10-25T15:11:42+05:30, when the
+**2026-10-31T11:35:20+05:30**, with Scheduled Statuses in the account page and the capture fix (before that 2026-10-31T01:53:14+05:30, Scheduled Statuses Release 1; earlier: 2026-10-25T15:11:42+05:30, when the
 documentation set was completed to the agent documentation guide
 ([agent_docs_guide.md](agent_docs_guide.md)) for publication).
 
@@ -29,7 +29,7 @@ documentation set was completed to the agent documentation guide
 | What would hosting this look like, and what does Evolution API actually do | [docs/hosting.md](docs/hosting.md), the investigation; [docs/extension.md](docs/extension.md) is what was built instead |
 | How does the browser extension work, and why can it fetch when a server cannot | [docs/extension.md](docs/extension.md), and [ARCHITECTURE.md](ARCHITECTURE.md), **The extension and the hosted renderer** |
 | SnipShare, the full page hosted for invited people: what it is, why, and how it was built | [docs/hosted-page.md](docs/hosted-page.md), DECISIONS.md D-087 to D-093, [ARCHITECTURE.md](ARCHITECTURE.md) **SnipShare** |
-| The account page, both GIF keys, feedback | [docs/account-page.md](docs/account-page.md), DECISIONS.md D-095 |
+| The account page, both GIF keys, feedback, and its **Scheduled Statuses** section (the extension's queue framed) | [docs/account-page.md](docs/account-page.md) (Tables AP-8, AP-9), DECISIONS.md D-095 and D-106 |
 | What was measured before the extension was built | [docs/extension-spike.md](docs/extension-spike.md) |
 | Scheduling a Status for later without taking focus: the requirement and plan, and **Section 15, what Release 1 built** (prepare only; Phase 0 pending) | [docs/scheduling.md](docs/scheduling.md), DECISIONS.md D-104 and D-105; the extension's side in [docs/extension.md](docs/extension.md), the data in [DATA_MODEL.md](DATA_MODEL.md), the permissions in [SECURITY.md](SECURITY.md) |
 | How do I install the extension, or let somebody in | [README.md](README.md), **SnipShare**; approving people and tokens in [DEPLOYMENT.md](DEPLOYMENT.md) |
@@ -94,7 +94,7 @@ documentation set was completed to the agent documentation guide
 | [scripts/site_check.py](scripts/site_check.py) | SnipShare end to end on this machine: a server of its own, the extension, a throwaway Chrome |
 | [scripts/build_extension.py](scripts/build_extension.py) | the extension built for one site, its id pinned, zipped for `/install` |
 | [wastatus/label.py](wastatus/label.py) | the session label: one cached page, opened as the posting browser's first tab, whose title names the port |
-| [tests/](tests/) | pytest, offline plus an opt in end to end run. `test_scheduling_limits.py` holds the server's per person limits, and `src/test/` the Node tests of the scheduling modules |
+| [tests/](tests/) | pytest, offline plus an opt in end to end run. `test_scheduling_limits.py` holds the server's per person limits, and `src/test/` the Node tests of the scheduling modules and, in `capture.test.js`, of the capture's choice of YouTube tab (D-106, IN-14) |
 | [scripts/setup_provider.sh](scripts/setup_provider.sh) | one time PO token provider install |
 | [scripts/setup_stickers.sh](scripts/setup_stickers.sh) | one time OpenMoji sticker library install |
 | [scripts/install_service.sh](scripts/install_service.sh) | installs the systemd user service that keeps the page running. Deliberately not installed, D-028 |

@@ -1055,5 +1055,24 @@ Send. The `action` field exists and is always `"prepare"`; any other value is re
 | The queue as a whole | verified in a headless Chromium with the real unpacked extension and a local hosted server in a scratch profile: real clips scheduled, retimed, captions edited, cancelled and undone, paused and resumed across two open queue pages, and a due schedule run with WhatsApp blocked, which failed cleanly to "signed out" with a notification and no change of focus |
 | Unit tests | 152 Node tests pass; the full pytest suite passes with 1569 passed and 7 skipped (2026-10-31T09:55:06+05:30, after the independent review's fixes) |
 
+### Added 2026-10-31T11:35:09+05:30: the account section and the capture fix
+
+Built on the same branch after the table above. **Scheduled Statuses in the account
+page** frames the extension's queue page (`queue.html?embed=1`), gated on
+`scheduling.enabled` in `/api/account`: one queue UI rather than a second, decided in
+D-106; states and messages in docs/account-page.md, Tables AP-8 and AP-9; the
+manifest's `web_accessible_resources` and the `frame-src` entry in SECURITY.md; Up
+next's **Scheduled** now goes to `/account#scheduled`. **A capture** no longer waits on
+a YouTube tab that cannot answer (IN-14, docs/extension.md). Extension version stays
+2.1.0.
+
+**Table SC-21: what is unverified, added**
+
+| Claim | Status |
+|---|---|
+| The account section | driven in headless Chromium with the unpacked extension at 360 and 1280 pixels, light and dark; the "extension too old" state is [Unverified], not driven in a browser |
+| The capture's tab rule | covered by `src/test/capture.test.js` with fake tabs; [Unverified] against the owner's own open tabs |
+| Unit tests | 156 Node tests pass; pytest 1593 passed, 7 skipped (counted 2026-10-31 after commit d917694) |
+
 Next: Phase 0 by the owner, then a week of the owner's use of Prepare, then confirmed
 Send (Phase 8), Release 2 and Release 3, in that order unless the owner says otherwise.

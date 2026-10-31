@@ -25,7 +25,7 @@ row needs more, the task below has it.
 
 | Task | Priority | Status | In one line | Waiting on |
 |---|---|---|---|---|
-| [T-073](#t-073-open-scheduled-statuses-release-1-awaiting-phase-0) Scheduled Statuses, Release 1 | P1 | **built, awaiting Phase 0** | prepare only, from the editor: a queue page, clips held on the computer, a quiet placement ladder, per person limits. Nothing tried in a real WhatsApp Web yet | the owner: Phase 0 on his Chrome (**Try quiet mode now (nothing is sent)**), then a week of use |
+| [T-073](#t-073-open-scheduled-statuses-release-1-awaiting-phase-0) Scheduled Statuses, Release 1 | P1 | **built, awaiting Phase 0** | prepare only, from the editor: a queue page, clips held on the computer, a quiet placement ladder, per person limits. Nothing tried in a real WhatsApp Web yet | the owner: Phase 0 on his Chrome (**Try quiet mode now (nothing is sent)**), then a week of use. Release 1 plus the account section are being merged, pushed and deployed on the owner's instruction of 2026-10-31 (updated 2026-10-31T11:35:20+05:30) |
 | [T-033](#t-033-open-instagram-as-a-second-source) Instagram as a second source | P2 | open | researched on 2026-08-22 and the ground is not level: your own posts have an official route, other people's have none. yt-dlp is the only mechanism that takes a pasted link, and anonymous extraction is dead today | the owner, on Table T33-2 |
 | [T-024](#t-024-p2-a-way-to-reach-a-gif-from-chrome) A way to reach a GIF from Chrome | P2 | **parked** | Chrome on Android refuses keyboard GIFs on any phone, so the GIF step is done in Firefox, which is route A and costs nothing | a phone on the cable, to settle whether route B works. Nothing to decide |
 | [T-021](#t-021-p1-find-out-why-a-clip-sometimes-crawls-to-the-phone) Why a clip sometimes crawls to the phone | P1 | **parked** | 1 to 2 seconds on some attempts, 10 to 15 minutes on others, Tailscale on throughout | the owner, when it next bites. The test is now to watch `tailscale status` for `direct` or `relay` |
@@ -115,6 +115,10 @@ was built; decisions D-104 and D-105.
 - [x] Per person server limits and the pilot switch, edited on the admin page
 - [x] 152 Node tests and the pytest suite (1569 passed, 7 skipped, 2026-10-31T09:55:06+05:30, after the
   review fixes); a headless Chromium run with the real extension and a local server
+- [x] Added 2026-10-31T11:35:20+05:30: Scheduled Statuses in the account page (the queue framed, D-106) and the
+  capture fix (IN-14); 156 Node tests, pytest 1593 passed and 7 skipped (counted 2026-10-31 after
+  d917694); extension version stays 2.1.0, `EXTENSION_MIN_VERSION` 2.0.0
+- [ ] The account section's "extension too old" state, driven in a browser
 - [ ] Phase 0 on the owner's Chrome: a composer in a hidden tab, a tab never shown, an
   unfocused helper window on Linux, a tab moved without "Use here", a caption typed
   unfocused. [Unverified] until then
