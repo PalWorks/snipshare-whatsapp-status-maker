@@ -228,3 +228,46 @@ Ads: the walk's two minute limit now counts only the time spent reading, not tim
 spent waiting for ads, which have five minutes of their own; the worker gives up on
 a capture after a minute with no word from the page, rather than after three
 minutes in all.
+
+## Scheduled Statuses, Release 1, 2026-10-31T01:51:47+05:30
+
+Version 2.1.0. The plan is [scheduling.md](scheduling.md) and what was built is its
+Section 15; the decisions are D-104 and D-105. The extension now keeps a queue of
+clips and, when one is due, puts it in WhatsApp's composer for the person to send. It
+never presses Send.
+
+**Table EX-5: what Release 1 adds to the extension**
+
+| Piece | What it is |
+|---|---|
+| `queue.html`, `queue.css`, `queue-page.js` | a page of the extension: the queue table, Needs you, history, the held clip budget, the quiet test and the run log. Opened by the page's **Scheduled** link (`open-queue`), by **Open the queue** in the options page, or from the toolbar button's menu (**Scheduled Statuses**). Talks to the worker over the internal port `snipshare-queue` |
+| `queue.js`, `custody.js`, `place.js`, `schedule.js` | the worker's modules, loaded by `importScripts` before its own code: the rules, the held clips, the placement ladder, the stored queue (`SnipQueue`, `SnipCustody`, `SnipPlace`, `SnipSchedule`) |
+| options page | the scheduling settings: quiet hours, the gap for Add to queue, bring WhatsApp forward, take focus when idle, a notice for every post |
+| new permissions | `notifications`, `idle`, `unlimitedStorage`, `contextMenus`; the reasons are in [SECURITY.md](../SECURITY.md) |
+
+**Table EX-6: what the page may now ask, over the external port**
+
+| Asks | With | Answers | Notes |
+|---|---|---|---|
+| `hello` | | `{version, whatsapp, features}` | `features` is `["schedule"]`; the page offers scheduling only when it is there and the server's `scheduling.enabled` is on |
+| `schedule` | `url` of `/api/v1/clip?stem=`, `grant` (clip), `stem`, `name`, `caption`, `mode`, `due` or `afterLast: true`, `action: "prepare"`, `limits` | progress ("Keeping the clip on this computer"), then `{schedule, note}` | validates the time and the limits, then fetches the clip into IndexedDB; any `action` but `prepare` is refused |
+| `queue-peek` | | `{next, count, needsYou}`, the next three | for the page's **Up next** |
+| `open-queue` | | `{opened: true}` | opens `queue.html` in a new active tab, or focuses the open one: the person pressed a link, so the front is right |
+
+**The alarms.** One `sched-next` alarm stands for the nearest thing to do (a prewarm
+five minutes ahead, a run two minutes before the due time so the composer is ready at
+it, a wait, a deadline) and one `sched-sweep` runs every 15 minutes. Both are rebuilt
+on every wake, because Chrome can drop alarms. The existing `wastatus` alarm belongs
+to the popup's job. `chrome.alarms.onAlarm` sends each alarm by name: `wastatus` to
+the job loop, `sched-*` to the schedule, and a name nobody owns is ignored, so a
+schedule alarm never drives the job loop.
+
+**A run** is: prewarm (mark WhatsApp's tab undiscardable, check it is signed in), then
+at the lead time check the person is not using WhatsApp and no composer is open, walk
+the ladder from the rung that worked last on this machine, and put the clip in the
+composer. Success notifies "in WhatsApp, press Send"; failure notifies what the person
+can do. Scheduled runs are paced at 40 an hour on their own key. The tab stays
+undiscardable until the composer is closed, for 6 hours at most.
+
+[Unverified] on the owner's Chrome: nothing here has run against a real WhatsApp Web,
+and Phase 0 has not been run.

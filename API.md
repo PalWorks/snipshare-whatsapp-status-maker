@@ -220,7 +220,7 @@ feedback body 12,000,000.
 |---|---|---|---|
 | `POST /api/grant` | `{purpose: upload, window: {url, start, end or duration}}` | `{grant, server, expires_in: 900, video_id, start, end}`, the window resolved exactly as the render will resolve it | 400 the day's clips are made, the hour is full, not a YouTube link; 409 a render of yours is running; 429 over 120 an hour |
 | `POST /api/grant` | `{purpose: clip, stem}` | `{grant, server, expires_in: 900}`, good for that one clip | 404 no such clip |
-| `POST /api/report` | `source` (`capture`, `load`, `page`, `words`), `phase`, `code`, `detail`, `versions` | `{recorded: true}`, or `{recorded: false}` past 30 an hour | 400 unknown source |
+| `POST /api/report` | `source` (`capture`, `load`, `page`, `words`, `schedule`), `phase`, `code`, `detail`, `versions` | `{recorded: true}`, or `{recorded: false}` past 30 an hour | 400 unknown source |
 | `POST /api/feedback` | `kind` (`idea`, `problem`, `question`, `other`), `subject` (1 to 120), `message` (3 to 3,000), `name`, `attachments: [{data}]` (at most 3, each at most 4 MB, re-encoded as JPEG), `code`, `versions` | `{sent: true, mailed}`; kept as a report whether or not the mail went | 400, 413, 429 over 5 an hour |
 | `GET /api/account` | | `{profile, sessions, usage, gifs, kept: 10, history_days: 90, contact}` | |
 | `GET /api/account/history` | | `{days: [14 x {day, clips, failures, upload_bytes}], clips: [{at, video_id, title, channel, mode, start, end, stem, ok, seconds, error, kept}], usage}` | |
@@ -233,10 +233,17 @@ feedback body 12,000,000.
 | `GET /api/admin` | `from`, `to`: UTC days, inclusive, today when absent | `{range, totals, people, usage, reports, renderer, disk_free_gb, notifications, clips_per_day, site}` | 400 a range over a year |
 | `POST /api/admin/decide` | `{email, status: approved, declined or suspended}` | the person | 400, an admin cannot be refused |
 | `POST /api/admin/add` | `{email, name}` | the person, approved | 400 |
+| `POST /api/admin/limits` | `{email, changes}`: `changes` holds any of `clips` (1 to 1000 a day), `upload_mb` (1 to 20000 a day), `pending` (0 to 500), `budget_mb` (0 to 20000) and `scheduling` (true or false); a key set to `null` or `""` goes back to the default, a key left out is untouched | `{limits: {clips, upload_bytes, pending, budget_bytes, scheduling, custom}}`, `custom` naming what was set | 400 with the reason: not a whole number, out of bounds, or a name that is not a limit. Added 2026-10-31T01:51:47+05:30 |
 | `POST /api/admin/forget` | `{email}` | `{forgotten: true}`, files included | 400 nobody, or an admin |
 
 `usage` is `{clips, failures, upload_bytes, render_seconds, clips_limit,
-upload_limit}`. A session in `sessions` is `{id, created, last_seen, agent, current}`,
+upload_limit}`, the limits being the person's own (admin figures where set, else the
+defaults). `GET /api/state` (the tool page's state, Table API-8) now also carries
+`scheduling: {enabled, pending, budget_bytes}`: the pilot switch and the figures the
+page tells the extension to enforce. It is always sent; the page decides what a switch
+that is off hides, and the server enforces the daily clips and upload limits whatever
+the page does. `GET /api/admin` gives each person a `limits` object of the same shape
+as the answer above. A session in `sessions` is `{id, created, last_seen, agent, current}`,
 where `id` is a 16 character name that is not the session's hash.
 
 ### The tool page's routes, hosted
@@ -248,7 +255,7 @@ Every other `/api/*` is Table API-2 and API-3, answered from the person's own
 
 | Route | On the hosted site |
 |---|---|
-| `GET /api/state` | adds `hosted: true`, `rendering` (the id of a render the page lost track of), `me {email, name, admin}`, `quota` (the usage object), `extension {id, min_version}`; `whatsapp.ready` is always false |
+| `GET /api/state` | adds `hosted: true`, `rendering` (the id of a render the page lost track of), `me {email, name, admin}`, `quota` (the usage object), `scheduling {enabled, pending, budget_bytes}`, `extension {id, min_version}`; `whatsapp.ready` is always false |
 | `POST /api/render` | also needs `captured: {video_id, duration, title, channel, artist, audio, video or artwork}`, the upload ids the extension sent. The video must match the link. 429 over 30 an hour per person, or the day's clips, the hour's cap or the disk; 409 one of yours is running |
 | `POST /api/words` | `{url, title, channel}`: the words the extension read, cleaned as the card cleans them. Nothing asks YouTube |
 | `POST /api/gif/provider` | `{provider: giphy, klipy or both}`, kept as the person's choice |
@@ -273,6 +280,7 @@ Every other `/api/*` is Table API-2 and API-3, answered from the person's own
 | Renders at once | one per person, `WASTATUS_HOSTED_WORKERS` slots across everybody, shared with popup jobs | `Renderer.slots` | 409, or waits for a slot |
 | Waiting popup jobs | 8 | `QUEUE_MAX` | 503, `Retry-After: 60` |
 | Captures, loads | 20 and 10 an hour per browser | the extension, `chrome.storage.local` `pace` | the extension refuses, code `paced` |
+| Scheduled runs | 40 an hour per browser, on their own key so the loads do not use it up | the same, `pace.scheduled` | the run waits |
 
 "Per address" is the peer address, or `CF-Connecting-IP` when `WASTATUS_TRUST_PROXY` is
 on. Days are UTC. A restart forgets the in memory limits.
@@ -297,13 +305,16 @@ another origin is refused).
 
 | `cmd` | Sent with | `done` | Notes |
 |---|---|---|---|
-| `hello` | | `{version, whatsapp}`, `whatsapp` being `none`, `open`, `signed-in` or `unknown` | the page waits 4 s, three tries. It is the status check: the page's chip and its version gate (`min_version` 2.0.0) come from it |
+| `hello` | | `{version, whatsapp, features}`, `whatsapp` being `none`, `open`, `signed-in` or `unknown`, and `features` `["schedule"]` from 2.1.0 | the page waits 4 s, three tries. It is the status check: the page's chip and its version gate (`min_version` 2.0.0) come from it |
 | `capture` | `videoId`, `start`, `end`, `mode`, `server`, `grant` (upload) | `{video_id, title, channel, duration, audio, video or artwork}`: upload ids for `POST /api/render`'s `captured` | opens the video muted in a tab beside the page when none shows it, reads the window, uploads to `/api/v1/uploads` with the grant. One at a time in the browser, shared with the popup |
 | `load` | `url` (must be `<origin>/api/v1/clip?stem=`), `grant` (clip), `caption` (cut to 1,024), `name` | `{loaded: true}` | fetches the clip with ranges, fills the WhatsApp Web composer, never presses Send. One at a time |
 | `words` | `url` or `videoId` | `{title, channel}` from YouTube's oEmbed | the page then posts them to `/api/words`; 20 s timeout |
 | `stop` | | | aborts the command on this port |
+| `schedule` | `url` (must be `<origin>/api/v1/clip?stem=`), `grant` (clip), `stem`, `name`, `caption` (cut to 1,024), `mode`, `due` (epoch ms) or `afterLast: true`, `action: "prepare"`, `limits: {pending, budgetBytes}` | `{schedule, note}` | keeps the clip on the computer, in parts, then queues it; only `prepare` is accepted. Codes `past`, `far`, `limit`, `budget`, `quota`, `network`, `gone`, `invalid`. Needs `features` to include `schedule` |
+| `queue-peek` | | `{next: [{id, due, caption, word}], count, needsYou}` | the next three; for the page's **Up next** |
+| `open-queue` | | `{opened: true}` | opens the queue page in a new active tab, or focuses it |
 
-Error codes the page may see: `invalid`, `busy`, `paced`, `thumbnail`, `open`,
+Error codes the page may see (Scheduled Statuses added `past`, `far`, `limit`, `budget` and `quota`): `invalid`, `busy`, `paced`, `thumbnail`, `open`,
 `wrong-video`, `live`, `window`, `read`, `auth`, `upload-refused`, `network`, `gone`,
 `size`, `private`, `words`, `stopped`, `unknown`, `failed`, and WhatsApp's own words
 under phase `whatsapp`. The page itself adds `no-extension`, `timeout`, `silent` (five

@@ -1,8 +1,9 @@
 # Context map
 
 Which file to read for what. Start here. Last updated
-**2026-10-25T15:11:42+05:30**, when the documentation set was completed to the agent
-documentation guide ([agent_docs_guide.md](agent_docs_guide.md)) for publication.
+**2026-10-31T01:53:14+05:30**, with Scheduled Statuses Release 1 (earlier: 2026-10-25T15:11:42+05:30, when the
+documentation set was completed to the agent documentation guide
+([agent_docs_guide.md](agent_docs_guide.md)) for publication).
 
 ## Table CM-1: Documentation index
 
@@ -30,7 +31,7 @@ documentation guide ([agent_docs_guide.md](agent_docs_guide.md)) for publication
 | SnipShare, the full page hosted for invited people: what it is, why, and how it was built | [docs/hosted-page.md](docs/hosted-page.md), DECISIONS.md D-087 to D-093, [ARCHITECTURE.md](ARCHITECTURE.md) **SnipShare** |
 | The account page, both GIF keys, feedback | [docs/account-page.md](docs/account-page.md), DECISIONS.md D-095 |
 | What was measured before the extension was built | [docs/extension-spike.md](docs/extension-spike.md) |
-| Scheduling a Status for later without taking focus: the requirement and plan (proposed 2026-10-31T00:03:18+05:30) | [docs/scheduling.md](docs/scheduling.md) |
+| Scheduling a Status for later without taking focus: the requirement and plan, and **Section 15, what Release 1 built** (prepare only; Phase 0 pending) | [docs/scheduling.md](docs/scheduling.md), DECISIONS.md D-104 and D-105; the extension's side in [docs/extension.md](docs/extension.md), the data in [DATA_MODEL.md](DATA_MODEL.md), the permissions in [SECURITY.md](SECURITY.md) |
 | How do I install the extension, or let somebody in | [README.md](README.md), **SnipShare**; approving people and tokens in [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Where does the hosted renderer run, and how do I ship to it | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | SnipShare, the extension or the renderer broke | [RUNBOOK.md](RUNBOOK.md), **SnipShare, the hosted page** |
@@ -85,13 +86,15 @@ documentation guide ([agent_docs_guide.md](agent_docs_guide.md)) for publication
 | [wastatus/signin.py](wastatus/signin.py), [wastatus/notify.py](wastatus/notify.py), [wastatus/watch.py](wastatus/watch.py) | Google's ID token and Turnstile; mail and Chat to the owner; the checks, digest, backup and tidy that run inside the container |
 | [wastatus/pages/](wastatus/pages/) | the public pages and their layout, `site.js` (sign-in, the request form), `hosted.js` (the tool page's bridge to the extension), `account.js` (the account page), `admin.js` |
 | [src/](src/) | the Chrome extension: `media.js` the fragment parser, `recorder.js` the capture in the YouTube page, `bridge.js`, `sw.js` the job, `popup.*`, `whatsapp.js` and `wa-bridge.js` for the composer; Node tests in `src/test` |
+| [src/queue.js](src/queue.js), [src/custody.js](src/custody.js), [src/place.js](src/place.js), [src/schedule.js](src/schedule.js) | Scheduled Statuses, Release 1, in the worker: the queue's pure rules (order, spacing, limits, catch up, resume, words); the clip held in IndexedDB parts; the placement ladder and its per machine record; the stored queue, its alarms, notifications and ports. Plan and as built: [docs/scheduling.md](docs/scheduling.md) |
+| [src/queue.html](src/queue.html), `queue.css`, [src/queue-page.js](src/queue-page.js) | the queue page: the table of scheduled Statuses, edited in place, Undo, Pause, history, the budget and the quiet test |
 | [deploy/](deploy/) | the hosted site's Dockerfile, its own `requirements.txt` (what the site runs, a subset of the tool's) and the Compose project (app and tunnel) |
 | [scripts/deploy.sh](scripts/deploy.sh) | ships the renderer to the production host |
 | [scripts/extension_check.py](scripts/extension_check.py) | drives the real extension's popup flow in a throwaway Chrome for Testing, end to end, optionally on a throttled connection |
 | [scripts/site_check.py](scripts/site_check.py) | SnipShare end to end on this machine: a server of its own, the extension, a throwaway Chrome |
 | [scripts/build_extension.py](scripts/build_extension.py) | the extension built for one site, its id pinned, zipped for `/install` |
 | [wastatus/label.py](wastatus/label.py) | the session label: one cached page, opened as the posting browser's first tab, whose title names the port |
-| [tests/](tests/) | pytest, offline plus an opt in end to end run |
+| [tests/](tests/) | pytest, offline plus an opt in end to end run. `test_scheduling_limits.py` holds the server's per person limits, and `src/test/` the Node tests of the scheduling modules |
 | [scripts/setup_provider.sh](scripts/setup_provider.sh) | one time PO token provider install |
 | [scripts/setup_stickers.sh](scripts/setup_stickers.sh) | one time OpenMoji sticker library install |
 | [scripts/install_service.sh](scripts/install_service.sh) | installs the systemd user service that keeps the page running. Deliberately not installed, D-028 |

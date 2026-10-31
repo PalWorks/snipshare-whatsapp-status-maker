@@ -17,6 +17,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -41,6 +42,16 @@ GRANT_SECONDS = 15 * 60
 GRANT_LIFETIME = 2 * 3600   # however busy, a grant ends two hours after it was made
 DEFAULT_CLIPS_PER_DAY = 10
 DEFAULT_UPLOAD_MB_PER_DAY = 500
+# Scheduled Statuses (docs/scheduling.md, Table SC-10): the pilot is off for everyone but
+# the admins until an admin switches a person on, and the held clips stay in the
+# person's own browser, so these two are the extension's limits told to it by the page.
+DEFAULT_PENDING = 30
+DEFAULT_BUDGET_BYTES = 400_000_000
+ADMIN_PENDING = 90
+ADMIN_BUDGET_BYTES = 1_000_000_000
+# What an admin may set, so a typo cannot hand a person the machine.
+LIMIT_BOUNDS = {"clips": (1, 1000), "upload_mb": (1, 20000), "pending": (0, 500),
+                "budget_mb": (0, 20000)}
 
 PENDING, APPROVED, DECLINED, SUSPENDED = "pending", "approved", "declined", "suspended"
 STATUSES = (PENDING, APPROVED, DECLINED, SUSPENDED)
@@ -63,7 +74,12 @@ create table if not exists people (
   decided real,
   last_seen real,
   gif_source text not null default '',
-  picture text not null default ''
+  picture text not null default '',
+  lim_clips integer,
+  lim_upload integer,
+  lim_pending integer,
+  lim_budget integer,
+  lim_scheduling integer
 );
 create table if not exists sessions (
   hash text primary key,
@@ -256,6 +272,12 @@ class Accounts:
                 db.execute("alter table people add column gif_source text not null default ''")
             if "picture" not in columns:
                 db.execute("alter table people add column picture text not null default ''")
+            # 2026-10-31: the admin's per person figures. Null means "the default", so
+            # a person nobody has touched follows the environment and the role.
+            for column in ("lim_clips", "lim_upload", "lim_pending", "lim_budget",
+                           "lim_scheduling"):
+                if column not in columns:
+                    db.execute(f"alter table people add column {column} integer")
         if "sessions" in tables:
             columns = {row[1] for row in db.execute("pragma table_info(sessions)")}
             if "agent" not in columns:
@@ -559,10 +581,79 @@ class Accounts:
 
     # -- limits ------------------------------------------------------------
 
+    def person_limits(self, email: str) -> dict[str, Any]:
+        """What this person may use: the admin's figures where set, else the defaults.
+
+        Admins default to scheduling on, 90 pending and 1 GB held; everyone else to
+        off, 30 and 400 MB. The daily clips and upload follow the environment until
+        an override says otherwise."""
+        row = self._one("select role, lim_clips, lim_upload, lim_pending, lim_budget, "
+                        "lim_scheduling from people where email = ?", (email,))
+        clips, upload = limits()
+        admin = bool(row and row["role"] == ADMIN)
+        pending = ADMIN_PENDING if admin else DEFAULT_PENDING
+        budget = ADMIN_BUDGET_BYTES if admin else DEFAULT_BUDGET_BYTES
+        scheduling = admin
+        custom: dict[str, Any] = {}
+        if row:
+            if row["lim_clips"] is not None:
+                clips = custom["clips"] = row["lim_clips"]
+            if row["lim_upload"] is not None:
+                upload = row["lim_upload"]
+                custom["upload_mb"] = upload // 1_000_000
+            if row["lim_pending"] is not None:
+                pending = custom["pending"] = row["lim_pending"]
+            if row["lim_budget"] is not None:
+                budget = row["lim_budget"]
+                custom["budget_mb"] = budget // 1_000_000
+            if row["lim_scheduling"] is not None:
+                scheduling = custom["scheduling"] = bool(row["lim_scheduling"])
+        return {"clips": clips, "upload_bytes": upload, "pending": pending,
+                "budget_bytes": budget, "scheduling": scheduling, "custom": custom}
+
+    def set_limits(self, email: str, changes: dict[str, Any]) -> dict[str, Any]:
+        """Set or clear a person's figures. A key present with None (or an empty
+        string) goes back to the default; a key left out is untouched. Every value is
+        checked here, because the page's checks are a courtesy."""
+        if self.person(email) is None:
+            raise AccessError("nobody has that address")
+        columns = {"clips": "lim_clips", "upload_mb": "lim_upload",
+                   "pending": "lim_pending", "budget_mb": "lim_budget",
+                   "scheduling": "lim_scheduling"}
+        unknown = set(changes) - set(columns)
+        if unknown:
+            raise AccessError(f"{sorted(unknown)[0]} is not a limit that can be set")
+        names = {"clips": "clips a day", "upload_mb": "MB of upload a day",
+                 "pending": "scheduled posts", "budget_mb": "MB of held clips"}
+        sets: dict[str, Any] = {}
+        for key, value in changes.items():
+            if value is None or value == "":
+                sets[columns[key]] = None
+            elif key == "scheduling":
+                if not isinstance(value, bool):
+                    raise AccessError("scheduling is on or off")
+                sets[columns[key]] = int(value)
+            else:
+                # ASCII digits only: str.isdigit() accepts "²" and the like, which
+                # int() then refuses, so a typo would have been a 500.
+                if isinstance(value, bool) or not isinstance(value, (int, str)) \
+                        or not re.fullmatch(r"-?[0-9]+", str(value).strip()):
+                    raise AccessError(f"{names[key]} must be a whole number")
+                number = int(value)
+                low, high = LIMIT_BOUNDS[key]
+                if not low <= number <= high:
+                    raise AccessError(f"{names[key]} must be between {low} and {high}")
+                sets[columns[key]] = number * 1_000_000 if key.endswith("_mb") else number
+        if sets:
+            self._do("update people set " + ", ".join(f"{c} = ?" for c in sets)  # noqa: S608
+                     + " where email = ?", (*sets.values(), email))
+        return self.person_limits(email)
+
     def usage(self, email: str, day: str | None = None) -> dict[str, Any]:
         row = self._one("select * from usage where email = ? and day = ?",
                         (email, day or today()))
-        clips, upload_bytes = limits()
+        mine = self.person_limits(email)
+        clips, upload_bytes = mine["clips"], mine["upload_bytes"]
         used = dict(row) if row else {"clips": 0, "failures": 0, "upload_bytes": 0,
                                        "render_seconds": 0.0}
         return {"clips": used["clips"], "failures": used["failures"],
@@ -587,7 +678,7 @@ class Accounts:
 
         The check and the count are one transaction under the write lock: two
         uploads arriving together must not both fit into the same last few MB."""
-        _, limit = limits()
+        limit = self.person_limits(email)["upload_bytes"]
         day = today()
         with self._write:
             db = self._db()

@@ -29,6 +29,12 @@ def source(name: str) -> str:
     return (EXT / name).read_text(encoding="utf-8")
 
 
+def imported() -> list[str]:
+    match = re.search(r"importScripts\(([^)]*)\)", source("sw.js"))
+    assert match, "importScripts not found"
+    return re.findall(r'"([^"]+)"', match.group(1))
+
+
 def js_list(text: str, name: str) -> list[str]:
     match = re.search(rf"const {name} = \[(.*?)\];", text, re.S)
     assert match, f"{name} not found"
@@ -52,7 +58,9 @@ def test_the_parser_passes_its_own_tests():
 
 @pytest.mark.skipif(not shutil.which("node"), reason="needs Node")
 @pytest.mark.parametrize("name", ["media.js", "recorder.js", "bridge.js", "sw.js",
-                                  "whatsapp.js", "wa-bridge.js", "popup.js", "config.js"])
+                                  "whatsapp.js", "wa-bridge.js", "popup.js", "config.js",
+                                  "queue.js", "custody.js", "place.js", "schedule.js",
+                                  "queue-page.js"])
 def test_every_script_parses(name):
     run = subprocess.run(["node", "--check", str(EXT / name)], capture_output=True, text=True)
     assert run.returncode == 0, run.stderr
@@ -65,7 +73,7 @@ class TestTheManifest:
         named = [self.manifest["background"]["service_worker"],
                  *self.manifest["icons"].values(),
                  *self.manifest["action"]["default_icon"].values(),
-                 *re.findall(r'importScripts\("([^"]+)"\)', source("sw.js")),
+                 *imported(),
                  # Switched off, not deleted: the toolbar button opens SnipShare now.
                  "popup.html", "popup.js"]
         for script in self.manifest["content_scripts"]:
@@ -85,13 +93,23 @@ class TestTheManifest:
         assert page[0]["run_at"] == "document_start"
 
     def test_the_scripts_injected_later_are_the_ones_on_disk(self):
-        worker = source("sw.js")
-        for name in re.findall(r'files: \["([^"]+)"\]', worker):
-            assert (EXT / name).is_file(), name
+        for script in ("sw.js", "place.js"):
+            for name in re.findall(r'files: \["([^"]+)"\]', source(script)):
+                assert (EXT / name).is_file(), name
+
+    def test_the_worker_loads_the_scheduling_modules_before_its_own_code(self):
+        """Scheduled Statuses (docs/scheduling.md): the queue's rules, the clips kept
+        for it, the placement in WhatsApp and the schedule, in that order."""
+        assert imported() == ["config.js", "queue.js", "custody.js", "place.js", "schedule.js"]
 
     def test_it_asks_for_nothing_it_does_not_use(self):
-        assert sorted(self.manifest["permissions"]) == ["alarms", "downloads", "scripting",
-                                                         "storage"]
+        """Scheduling added four: notifications for what needs the person, idle for
+        not interrupting someone at the keyboard (FR-12), unlimitedStorage for the
+        kept clips (Section 8.2), contextMenus for the queue on the button (E13).
+        No `background` permission (E13: only if Phase 0 shows it helps)."""
+        assert sorted(self.manifest["permissions"]) == [
+            "alarms", "contextMenus", "downloads", "idle", "notifications", "scripting",
+            "storage", "unlimitedStorage"]
         assert set(self.manifest["host_permissions"]) == {
             "https://www.youtube.com/*", "https://i.ytimg.com/*",
             "https://web.whatsapp.com/*", "http://127.0.0.1/*", "http://localhost/*"}

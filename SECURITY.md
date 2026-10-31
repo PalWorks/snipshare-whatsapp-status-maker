@@ -319,6 +319,57 @@ once, and paces itself to 20 captures and 10 loads an hour.
 **Deleting.** **Delete my account** stops a render in progress and removes the
 account, sessions, grants, clips, stickers, key and counts. Reports keep no email.
 
+## Scheduled Statuses, extension 2.1.0
+
+Added **2026-10-31T01:52:38+05:30**. The plan is [docs/scheduling.md](docs/scheduling.md), Section 15 is what
+was built, D-105 the decisions. Release 1 prepares only: **the extension never presses
+Send** (AGENTS.md Never, D-084), and nothing in this section changes that.
+
+**Table SE-4: what the new permissions are for**
+
+| Permission | Why | What it does not allow |
+|---|---|---|
+| `notifications` | tell the person what needs them: a clip is in WhatsApp and needs a press, a run was missed or failed, WhatsApp is signed out | no page content is read; the text is the extension's own |
+| `idle` | do not interrupt someone at the keyboard, and the opt in "take focus when I seem idle" (off by default) | it reports only active, idle or locked, never what the person is doing |
+| `unlimitedStorage` | hold up to the budget of scheduled clips (1 GB for an admin, 400 MB for others by default) in IndexedDB without Chrome evicting them | it widens the disk the extension may use, not what it may read |
+| `contextMenus` | the toolbar button's menu item **Scheduled Statuses** | nothing on web pages |
+
+There is no `background` permission. Host permissions are unchanged.
+
+**Who may command the queue.**
+
+- The external port (the page) is checked as before: the sender's origin must be exactly
+  the one this build was made for (`allowedOrigin`), anything else is disconnected.
+  `schedule`, `queue-peek` and `open-queue` come over it. `schedule` takes a clip URL
+  only on the page's own origin, `/api/v1/clip?stem=`, and a `server` naming another
+  origin is refused; the stem must match the server's own safe pattern; `action` must be
+  `prepare`.
+- The queue's own port, `snipshare-queue`, accepts only the extension's own pages: the
+  sender must be this extension and its URL one of the extension's. A content script on
+  a web page is disconnected, so a web page cannot edit, cancel or run a schedule.
+- Every change names the revision it was made against; a stale one is refused.
+
+**The grant during a fetch.** A scheduled clip is fetched with the same short lived
+`clip` grant as Load. While the fetch runs the worker keeps the grant in
+`chrome.storage.session`, so a worker Chrome stopped can carry on from the parts already
+kept; it is removed when the fetch ends, fails or the schedule is cancelled, and is not
+used after two hours (D-101). `chrome.storage.session` is memory, cleared when the
+browser closes, and by default readable only from the extension's own contexts
+[Unverified in this repository: that is Chrome's documented default, not something a test
+here proves]. No ticket or pin exists, so no credential outlives a grant (Section 14
+struck them).
+
+**What is stored.** The clips themselves, a SHA-256 for each, the captions and times.
+All of it is in the person's own browser and none of it is sent to the server, except
+that the page tells the server a schedule failed, with a code and no video (the report
+source `schedule`). A damaged part is found by the hash and fails plainly.
+
+**Server limits.** The per person figures are checked on the server by the code that
+checks every other limit; the page's switch only hides controls. Only an admin can read
+or change another person's figures (`POST /api/admin/limits` is refused before its body
+is read for anyone else), every value is bounds checked, and the log line does not
+name the person.
+
 ## Hardening from the audit before publication
 
 Updated **2026-10-25T15:11:42+05:30**, when the repository was prepared to be made

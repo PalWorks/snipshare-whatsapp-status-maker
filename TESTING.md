@@ -2,9 +2,10 @@
 
 ## Current state, stated plainly
 
-**1509 offline tests pass, plus 7 opt in end to end tests**, counted
-2026-10-25T22:43:40+05:30, after the second security pass (D-101), whose tests are
-`TestTheSecondSecurityPass` and `TestARequestIsReadOneWay` in `tests/test_portal.py`.
+**1569 offline tests pass and 7 are skipped, and 152 Node tests pass**, counted
+2026-10-31T09:55:06+05:30 on the Scheduled Statuses build, after the fixes from its independent review (the 1509 offline
+tests counted 2026-10-25T22:43:40+05:30, after the second security pass (D-101), whose tests are
+`TestTheSecondSecurityPass` and `TestARequestIsReadOneWay` in `tests/test_portal.py`).
 They cover timestamp parsing, transliteration, output naming, retention, logging,
 frame offsets, the local page, the posting driver, and since 2026-10-24 the hosted
 renderer, the capture cut and the browser extension's parser, which runs in Node
@@ -74,6 +75,13 @@ If the composer opens, the size is acceptable. If it times out, it is not.
 | `tests/test_publishable.py` | every tracked file free of real email addresses, public IPv4 addresses, home directories and the owner's private deny list (`.publish-deny`, git-ignored); the hosted image's `deploy/requirements.txt` a subset of `requirements.txt`, without yt-dlp, the token plugin or the websocket client |
 | `tests/test_hardening.py` | the local engine's share of the audit before publication, D-100: a link cannot pass options to yt-dlp and needs `http(s)`, the proxy password masked in the log, a rebinding `Host` refused the token, a `Content-Length` that is not digits refused unread, `send` defaulting to no in all three signatures, an unreadable WhatsApp store unconfirmed rather than sent, a clip being posted never pruned, a prune or the clip list surviving a clip vanishing, the sheet never failing a post, a 20,000 character line ellipsised in well under two seconds, render words held to a caption's length, one local render at a time, and errors shown without a server path |
 | `tests/test_extension.py` | runs the Node suite in `src/test` (the fragment parser against fragmented MP4 and WebM fed in uneven appends, through an abort mid fragment, a lost place, a second encoding mid stream, duplicates, `remove()`, `timestampOffset`, a WebM run cut mid cluster, and junk, every result read back by ffmpeg with no complaint) and `node --check` on every script. Plus the manifest: every file it names exists, the parser loads before the recorder in the page world, it asks for nothing it does not use. Plus the facts written down twice: the 90 second limit, **WhatsApp's labels and selectors equal to `post.py`'s**, the default renderer reachable, no chunk larger than the renderer takes, a request giving up before Cloudflare does, and the size warning equal to `render.PLATFORM_MAX_BYTES` |
+| `src/test/queue.test.js`, and the three below (all run by `tests/test_extension.py`) | the queue's pure rules with an explicit clock: order and spacing, the 2 minute and 30 day bounds, quiet hours as a warning, limits, catch up, resume's three choices, the next wake, Undo snapshots, the plain words per state, `shift` and `spread` |
+| `src/test/custody.test.js` | the clip kept in 2 MiB parts and hashed once, carried on after a stop, a line that drops mid part, a server that ignores Range, a wrong size refused with nothing kept, a damaged clip failing its hash, a full disk, no byte written without room for twice the clip, a clip the server no longer has, and the sweep deleting only unnamed scheduled parts |
+| `src/test/place.test.js` | the ladder with fake tabs and windows: quietest first with no record, then the order learned from `placeStats`, a rung skipped for a week after three failures, a load that moved focus counting against its rung, S3 and S5 only when allowed, the focus guard (our own focus change put back, the person's own left alone), the bridge's acknowledgement of every slice, one load at a time, and the person using WhatsApp holding a run back |
+| `src/test/schedule.test.js` | the stored queue against a fake clock, store, alarms and notifications: a schedule keeping its clip and arming the alarms, a bad time or a limit refused with a code, prewarm then a quiet run then prepared, a damaged clip never reaching WhatsApp, waiting a minute at a time then asking, catch up and missed, a worker stopped at each stage and the next one carrying on, Undo inside ten seconds, stale revisions refused, pause and resume's choices, lost alarms rebuilt on every wake, and a schedule alarm never driving the clip job |
+| `tests/test_extension.py` (additions) | the worker loads `queue.js`, `custody.js`, `place.js`, `schedule.js` in that order before its own code, every script passes `node --check`, and the manifest asks for exactly the permissions in SECURITY.md Table SE-4 and no `background` |
+| `tests/test_scheduling_limits.py` | the server's per person limits: defaults for a person and for an admin, an older database gaining the columns, each figure set and put back, an admin switched off, the daily clip and upload limits following the person, nonsense refused with nothing changed, deleting a person taking their figures, a person told their own, only an admin changing anyone's, the refusal coming before the body is read, a failure report with the source `schedule` |
+| `tests/test_page_wiring.py` (additions) | the Schedule controls start hidden and only the hosted script shows them, **Load into WhatsApp** stays the primary, the save button is inside the picker's form, the picker says what it does, and the phone line is the planned one |
 | `tests/test_smoke.py` | one real run: exit code, the output files and the absence of the opt in one, filename shape, 1080x1920 h264 and aac, duration, ASCII caption, the run record, and no leftover work directory |
 
 The aksharamukha import guard in `test_translit.py` is deliberate. That dependency
@@ -128,6 +136,28 @@ the extension's own `loadIntoWhatsApp`, and the composer was closed without send
 **Sync** is checked with the beep and flash video `M3aLeoGOiFU`: keep the clip, and
 measure the red frames against the 1 kHz onsets on the clip's own timestamps. The
 flash has to land on the whole second and the beep within a few milliseconds.
+
+## Scheduled Statuses, end to end
+
+Written **2026-10-31T01:52:38+05:30**. A headless Chromium with the real unpacked extension and a local
+hosted server (a throwaway data folder, a scratch browser profile, a test person) was
+driven in outline like this:
+
+1. Start a local hosted server with a throwaway data folder and sign a test person in,
+   with scheduling switched on for them.
+2. Load the unpacked extension built for that server's address into a scratch profile.
+3. Make a real clip on the page, then **Schedule** it and **Add to queue**, and open
+   the queue page.
+4. Retime a row, edit a caption, cancel a row and Undo it, Pause and Resume, with two
+   queue pages open to watch the other follow.
+5. Let a schedule fall due with WhatsApp blocked, and check that it fails cleanly to
+   "signed out", notifies, and moves no focus.
+
+Verified this way on 2026-10-31. **Not verified:** anything in a real WhatsApp Web,
+resume's three choices end to end, the alarm rebuild on every wake end to end. A real
+WhatsApp Web needs the owner's own signed in Chrome and is Phase 0 of the plan, which
+has not been run; **Try quiet mode now (nothing is sent)** on the queue page is the
+owner's test. Never run any of this against the owner's real WhatsApp or profile.
 
 ## Philosophy
 

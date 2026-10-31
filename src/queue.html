@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scheduled Statuses</title>
+<link rel="stylesheet" href="queue.css">
+</head>
+<body>
+<header class="top">
+  <h1>Scheduled Statuses</h1>
+  <p class="top__sub">Each one is put in WhatsApp for you to send.</p>
+</header>
+
+<!-- Said politely to a screen reader when a row moves or an action finishes. -->
+<p id="live" class="sr" role="status" aria-live="polite"></p>
+
+<main id="main">
+  <!-- Banners for the states that are not the queue itself. -->
+  <p id="offline" class="banner banner--bad" role="alert" hidden>
+    <span>Lost the connection to the extension. Trying again.</span>
+    <button id="reconnect" type="button" class="btn">Try now</button>
+  </p>
+  <p id="failure" class="banner banner--bad" role="alert" hidden></p>
+  <section id="conflict" class="banner banner--warn" role="alert" hidden>
+    <p id="conflict-text"></p>
+    <pre id="conflict-edit" class="kept"></pre>
+    <div class="banner__row">
+      <button id="conflict-retry" type="button" class="btn btn--primary">Apply my edit again</button>
+      <button id="conflict-drop" type="button" class="btn">Drop my edit</button>
+    </div>
+  </section>
+
+  <!-- Loading: until the worker answers. -->
+  <section id="loading" aria-label="Loading">
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton short"></div>
+  </section>
+
+  <div id="content" hidden>
+    <section class="controls" aria-label="Queue controls">
+      <button id="post-next" type="button" class="btn btn--primary">Prepare next now</button>
+      <button id="pause" type="button" class="btn">Pause queue</button>
+    </section>
+
+    <section id="paused" class="banner banner--warn" hidden>
+      <p id="paused-text"></p>
+      <div id="resume-plain" class="banner__row">
+        <button id="resume" type="button" class="btn btn--primary">Resume</button>
+      </div>
+      <div id="resume-choices" hidden>
+        <p id="resume-ask"></p>
+        <div class="choices">
+          <button data-choice="post" type="button" class="btn btn--primary">Prepare them in order, 90 s apart</button>
+          <button data-choice="later" type="button" class="btn">Move them all later by the time paused</button>
+          <button data-choice="missed" type="button" class="btn">Mark them missed</button>
+          <button id="resume-stay" type="button" class="btn btn--quiet">Keep it paused</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="needs" class="block" aria-labelledby="needs-h" hidden>
+      <h2 id="needs-h">Needs you <span id="needs-count" class="count"></span></h2>
+      <ul id="needs-list" class="needs"></ul>
+    </section>
+
+    <section id="next" class="block" aria-labelledby="next-h" hidden>
+      <h2 id="next-h">Next up</h2>
+      <p id="next-line" class="next"></p>
+    </section>
+
+    <section id="empty" class="empty" hidden>
+      <p class="empty__big">Nothing scheduled.</p>
+      <p>Make a clip on SnipShare, then choose Add to queue.</p>
+    </section>
+
+    <section id="table-block" class="block" aria-labelledby="all-h" hidden>
+      <h2 id="all-h">Everything scheduled</h2>
+      <div class="table-wrap">
+        <table id="table">
+          <thead>
+            <tr>
+              <th scope="col" class="c-when">When</th>
+              <th scope="col" class="c-cap">Caption</th>
+              <th scope="col" class="c-status">Status</th>
+              <th scope="col" class="c-act"><span class="sr">Action</span></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <details id="history" class="fold">
+      <summary>History, last 30 days <span id="history-count" class="count"></span></summary>
+      <p id="history-empty" class="muted" hidden>Nothing has finished in the last 30 days.</p>
+      <ul id="history-list" class="history"></ul>
+    </details>
+
+    <footer class="foot">
+      <div class="meter-block">
+        <p id="budget-text" class="foot__line"></p>
+        <div id="budget-meter" class="meter" role="progressbar" aria-labelledby="budget-text" aria-valuemin="0" aria-valuemax="100"><div id="budget-fill"></div></div>
+        <details class="fold fold--small">
+          <summary>Storage details</summary>
+          <p id="storage-detail" class="muted"></p>
+        </details>
+      </div>
+      <div class="quiet-block">
+        <p id="quiet-text" class="foot__line"></p>
+        <button id="test-quiet" type="button" class="btn">Try quiet mode now (nothing is sent)</button>
+        <p id="quiet-result" class="muted" role="status" hidden></p>
+      </div>
+      <p class="foot__line">Keep Chrome open and the computer awake.</p>
+      <details id="runlog" class="fold fold--small">
+        <summary>Run log</summary>
+        <p class="muted">The last runs: what happened and how long it took. No video or captions.</p>
+        <p id="runlog-empty" class="muted" hidden>No runs yet.</p>
+        <ul id="runlog-list" class="log"></ul>
+      </details>
+    </footer>
+  </div>
+</main>
+
+<!-- One toast at a time, holding the latest change (U12). -->
+<div id="toast" class="toast" hidden>
+  <span id="toast-text"></span>
+  <button id="toast-undo" type="button" class="btn btn--toast">Undo</button>
+  <button id="toast-close" type="button" class="btn btn--toast" aria-label="Dismiss">Close</button>
+</div>
+
+<script src="queue.js"></script>
+<script src="queue-page.js"></script>
+</body>
+</html>

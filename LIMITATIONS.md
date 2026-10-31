@@ -184,6 +184,20 @@ Written **2026-10-25T15:11:42+05:30**. Everything else the audit found is fixed
 | The commercial licence has no published price list | terms are agreed case by case (COMMERCIAL-LICENSE.md) | a standard licence once there is demand |
 | Outside contributions need a licence grant as well as a sign-off | the dual licence depends on it (CONTRIBUTING.md) | none; it is the price of offering a commercial licence |
 
+## Table LI-14: Scheduled Statuses, Release 1, 2026-10-31T01:52:38+05:30
+
+| Limitation | Why | What would change it |
+|---|---|---|
+| Every scheduled clip still needs the person to press Send | the extension never presses Send (AGENTS.md Never, D-084); confirmed Send is not built | Phase 8, gated on a week of Prepare runs and the owner's word |
+| A scheduled run happens only while Chrome is open and the computer awake | the queue lives in the extension; a closed browser runs nothing. The page says so when scheduling | none planned; a missed run is shown as missed, and may still go ahead if no more than 30 minutes late and outside quiet hours |
+| A prepared clip holds the composer, so the next run waits until the person has pressed Send or closed it | WhatsApp has one composer for a Status | none planned |
+| [Unverified] a quiet placement may not work on this machine, in which case a notification asks and the person presses it | Phase 0 has not been run; each rung's behaviour is unmeasured. The ladder learns what works per machine | run Phase 0, or turn on **Bring WhatsApp forward when needed** |
+| The WhatsApp tab is kept from Chrome's discarding for up to 6 hours while a clip is prepared and unsent | a discarded tab destroys the unsent composer | none; it is released after that |
+| Clips are held in this browser only, up to the budget (1 GB for an admin, 400 MB others by default) | the server holds a clip for an hour at most, and no tickets or pins were built | the plan's Section 7, struck in Section 14 |
+| Scheduling is a pilot, off for everyone but the admins until an admin switches a person on | Table SC-10 | the owner, per person |
+| Desktop Chrome with the extension only | a phone runs no extensions; the page says so in one line | none planned |
+| From a link and the bulk bar do not exist yet | Releases 2 and 3 | after Phase 0, a week of use, and the owner's word |
+
 ## Table LI-12: SnipShare, 2026-10-25
 
 | Limitation | Why | What would change it |

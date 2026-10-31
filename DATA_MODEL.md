@@ -95,6 +95,11 @@ the uploads their grants make in the renderer. Times are Unix seconds (`real`); 
 | `created`, `decided`, `last_seen` | real | `last_seen` is written at sign in and at most every five minutes of use |
 | `gif_source` | text | `''`, `giphy`, `klipy` or `both` |
 | `picture` | text | Google's photo address, at most 500 characters; anything but `https` on `*.googleusercontent.com` is stored as empty |
+| `lim_clips` | integer, nullable | the admin's clips a day for this person. Null means the default (`WASTATUS_CLIPS_PER_DAY`). Added 2026-10-31 |
+| `lim_upload` | integer, nullable | upload bytes a day. Null means `WASTATUS_UPLOAD_MB_PER_DAY` |
+| `lim_pending` | integer, nullable | scheduled posts allowed. Null means 30, or 90 for an admin |
+| `lim_budget` | integer, nullable | bytes of held clips the extension may keep for this person. Null means 400,000,000, or 1,000,000,000 for an admin |
+| `lim_scheduling` | integer, nullable | the scheduling pilot switch, 1 or 0. Null means off, or on for an admin |
 
 **Table DM-2: the other tables**
 
@@ -214,7 +219,13 @@ has stopped resumes from what is stored. D-082.
 |---|---|
 | `settings` | `{server, token, quality}`: the popup's renderer address, its access token, and `hd720` by default |
 | `job` | the popup's one clip in flight, Table DM-8. Removed by Stop |
-| `pace` | `{captures: [ms], loads: [ms]}`: the last hour's site captures and loads, for the 20 and 10 an hour limits |
+| `pace` | `{captures: [ms], loads: [ms], scheduled: [ms]}`: the last hour's site captures, loads and scheduled runs, for the 20, 10 and 40 an hour limits |
+| `sched` | the scheduled queue, Table DM-11: `{items: [Schedule], paused: null or {at: ms}, seq}` |
+| `schedHistory` | finished and cancelled schedules, kept 30 days |
+| `schedLog` | the run log, the last 200 runs: codes and timings only (OBSERVABILITY.md) |
+| `placeStats` | the per machine record of how each placement rung did, below |
+| `schedLimits` | `{pending, budgetBytes}` as the page last told the extension |
+| `settings` | gains the scheduling fields: `bringForward` false, `idleForward` false, `quietOn` true, `quietStart` `"23:00"`, `quietEnd` `"07:00"`, `gapMinutes` 180, `perPostNotices` false |
 
 **Table DM-8: the `job` record**
 
@@ -232,6 +243,27 @@ has stopped resumes from what is stored. D-082.
 | `serverJob` | the renderer's job id |
 | `clip` | `{size, caption, title, name}` once the render is done |
 
+**Table DM-11: a schedule in `sched.items`**, added 2026-10-31T01:52:02+05:30
+
+| Field | Holds |
+|---|---|
+| `id`, `rev` | `s_` and ten random characters; a revision that rises on every change, so a stale edit is refused (`conflict`) |
+| `created`, `due`, `zone` | milliseconds; the time zone is for display only |
+| `stem`, `name`, `caption`, `mode` | the clip on SnipShare, the file name, the caption (at most 1,024), `card` or `video` |
+| `size`, `sha256`, `custody`, `fetched` | bytes, the hash kept once the clip is whole, `fetching` or `local`, bytes fetched so far |
+| `action` | always `prepare` in this release |
+| `catchUp` | how late a run may still go ahead, 30 minutes |
+| `state` | `holding`, `scheduled`, `prewarmed`, `waiting`, `running`, `asked`, `prepared`, `failed`, `missed`, `cancelled`, `done`. Pending (counting against the limits) is every state but `done` and `cancelled` |
+| `rung`, `attempts`, `error`, `outcome` | the placement rung used (`S0` to `S5`), tries so far, `{message, code}`, and the last result code |
+| `origin`, `looked`, `repeat` | `editor`, true and null in this release |
+| `waitUntil`, `deleteAfter` | stored deadlines: the next look while waiting, and when a cancelled row goes (10 seconds, so Undo works) |
+| `ranAt`, `endedAt` | milliseconds |
+
+`placeStats` holds, per rung (`S0` to `S5`), `{wins, fails, streak, moved, placed,
+lastWin, lastFail, ms}`, plus when the quiet test last ran. A rung that failed three
+times running is left alone for a week. While the queue is paused items keep their
+state and `sched.paused` is the switch.
+
 **IndexedDB** database `wastatus`, version 1, one object store `blobs`, keyed
 `<job.key>:<part>`:
 
@@ -242,8 +274,9 @@ has stopped resumes from what is stored. D-082.
 | `audio`, `video`, `artwork` | the capture and the thumbnail | when the clip has arrived |
 | `clip-part` | the clip so far, saved every 2 MB | when it is whole |
 | `clip` | the finished clip | when the job is discarded or replaced |
+| `sched:<id>:part:<n>` | a scheduled clip, from n = 0, each part up to 2 MiB | when its schedule ends, or when the sweep finds a part nobody names. The job's own sweep never touches these |
 
-At every worker start, any key that is not the current job's is deleted. Captures the
+At every worker start, any key that is not the current job's is deleted, except the `sched:` keys, which belong to the scheduled queue and are swept by their own code. Captures the
 site asks for are not stored: they go straight from memory to the upload. The alarm
 `wastatus` exists only while a job is in flight. The site's pages keep two things in
 `localStorage`: the theme (`wastatus.theme`) and `snipshare.lastFailure`

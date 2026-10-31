@@ -229,7 +229,7 @@ details.faq p { color: var(--muted); }
 .field { display: grid; gap: 6px; margin-bottom: 16px; }
 .field label, .label { font-weight: 600; font-size: 14.5px; }
 .field .hint { color: var(--muted); font-size: 13.5px; margin: 0; }
-input[type="text"], input[type="email"], textarea {
+input[type="text"], input[type="email"], input[type="number"], textarea {
   width: 100%; min-height: var(--touch); padding: 10px 12px;
   border: 1px solid var(--border-strong); border-radius: var(--radius);
   background: var(--surface); color: var(--text);
@@ -539,6 +539,8 @@ fieldset.field legend { margin-bottom: 8px; }
 .personrow__meta { font-size: 13.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .person--focus { box-shadow: inset 3px 0 0 var(--accent); }
 .personrow .row__edit { grid-column: 1 / -1; }
+.limits__fields { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.limits .field { margin-bottom: 8px; }
 
 .menu {
   position: absolute; right: 12px; top: calc(100% - 8px); z-index: 20; min-width: 200px;

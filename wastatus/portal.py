@@ -224,6 +224,7 @@ class Workspace(serve.App):
     def state(self, fresh: bool = False) -> dict[str, Any]:
         person = self.portal.accounts.person(self.email)
         used = self.portal.accounts.usage(self.email)
+        mine = self.portal.accounts.person_limits(self.email)
         return {
             "hosted": True,
             "ffmpeg": True,
@@ -249,6 +250,11 @@ class Workspace(serve.App):
             "me": {"email": self.email, "name": person.name if person else "",
                    "admin": bool(person and person.admin)},
             "quota": used,
+            # Scheduled Statuses: the pilot switch and the figures the extension is
+            # told to enforce (it enforces the smaller of these and its own). Always
+            # sent; the page decides what a switch that is off hides.
+            "scheduling": {"enabled": mine["scheduling"], "pending": mine["pending"],
+                           "budget_bytes": mine["budget_bytes"]},
             "extension": {"id": os.environ.get(EXTENSION_ID_ENV) or "",
                           "min_version": EXTENSION_MIN_VERSION},
         }
@@ -1105,7 +1111,7 @@ class SiteHandler(hosted.Handler, serve.Handler):
         if not self.portal.limiter.allow("report", person.id, 30, 3600):
             return self._json({"recorded": False})
         source = str(body.get("source") or "")
-        if source not in ("capture", "load", "page", "words"):
+        if source not in ("capture", "load", "page", "words", "schedule"):
             raise AccessError("unknown source")
         phase = plain(body.get("phase"), 40)
         code = plain(body.get("code"), 80)
@@ -1277,7 +1283,11 @@ class SiteHandler(hosted.Handler, serve.Handler):
         used = {row["email"]: row for row in summary["by_person"]}
         people = []
         for one in store.people():
-            row = one.as_json() | {"picture": store.picture(one.email)}
+            mine = store.person_limits(one.email)
+            row = one.as_json() | {"picture": store.picture(one.email),
+                                   "limits": {k: mine[k] for k in (
+                                       "clips", "upload_bytes", "pending", "budget_bytes",
+                                       "scheduling", "custom")}}
             got = used.get(one.email) or {}
             row["range"] = {"clips": got.get("clips") or 0, "failures": got.get("failures") or 0,
                             "upload_bytes": got.get("upload_bytes") or 0}
@@ -1300,6 +1310,18 @@ class SiteHandler(hosted.Handler, serve.Handler):
                                               str(body.get("status") or ""))
         log.info("access for a person set to %s by the admin", decided.status)
         self._json(decided.as_json())
+
+    def _admin_limits(self, person: Person, body: dict[str, Any]) -> None:
+        """One person's figures, set or put back to the defaults (`changes`). Reached
+        only through ACCOUNT_CALLS with admin=True, which refuses a non-admin before
+        the body is read."""
+        email = accounts.normal_email(body.get("email"))
+        changes = body.get("changes")
+        if not isinstance(changes, dict):
+            raise AccessError("send the figures to change")
+        mine = self.portal.accounts.set_limits(email, changes)
+        log.info("limits for a person changed by the admin")
+        self._json({"limits": mine})
 
     def _admin_add(self, person: Person, body: dict[str, Any]) -> None:
         added = self.portal.accounts.add(str(body.get("email") or ""),
@@ -1528,6 +1550,7 @@ ACCOUNT_CALLS = {
     "/api/feedback": ("_feedback", False),
     "/api/admin/decide": ("_admin_decide", True),
     "/api/admin/add": ("_admin_add", True),
+    "/api/admin/limits": ("_admin_limits", True),
     "/api/admin/forget": ("_admin_forget", True),
 }
 

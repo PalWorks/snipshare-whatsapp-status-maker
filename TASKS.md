@@ -25,6 +25,7 @@ row needs more, the task below has it.
 
 | Task | Priority | Status | In one line | Waiting on |
 |---|---|---|---|---|
+| [T-073](#t-073-open-scheduled-statuses-release-1-awaiting-phase-0) Scheduled Statuses, Release 1 | P1 | **built, awaiting Phase 0** | prepare only, from the editor: a queue page, clips held on the computer, a quiet placement ladder, per person limits. Nothing tried in a real WhatsApp Web yet | the owner: Phase 0 on his Chrome (**Try quiet mode now (nothing is sent)**), then a week of use |
 | [T-033](#t-033-open-instagram-as-a-second-source) Instagram as a second source | P2 | open | researched on 2026-08-22 and the ground is not level: your own posts have an official route, other people's have none. yt-dlp is the only mechanism that takes a pasted link, and anonymous extraction is dead today | the owner, on Table T33-2 |
 | [T-024](#t-024-p2-a-way-to-reach-a-gif-from-chrome) A way to reach a GIF from Chrome | P2 | **parked** | Chrome on Android refuses keyboard GIFs on any phone, so the GIF step is done in Firefox, which is route A and costs nothing | a phone on the cable, to settle whether route B works. Nothing to decide |
 | [T-021](#t-021-p1-find-out-why-a-clip-sometimes-crawls-to-the-phone) Why a clip sometimes crawls to the phone | P1 | **parked** | 1 to 2 seconds on some attempts, 10 to 15 minutes on others, Tailscale on throughout | the owner, when it next bites. The test is now to watch `tailscale status` for `direct` or `relay` |
@@ -92,6 +93,38 @@ row needs more, the task below has it.
 
 Retired numbers: T-001, T-002, T-003, T-010, T-011 were folded into decisions or
 overtaken; they are not missing, they are gone.
+
+---
+
+## T-073 (open) Scheduled Statuses, Release 1: awaiting Phase 0
+
+**Built:** 2026-10-31T01:53:14+05:30. Branch `feat/scheduling-r1`, uncommitted when this was written.
+
+**Goal.** A clip made on SnipShare can be scheduled, held on the person's computer, and
+put in WhatsApp's composer at its time for the person to send, without taking focus
+where Chrome allows. Plan: [docs/scheduling.md](docs/scheduling.md), Section 15 is what
+was built; decisions D-104 and D-105.
+
+**Acceptance.**
+
+- [x] From the editor only, prepare only: the extension never presses Send
+- [x] Local custody in 2 MiB parts, size checked, SHA-256 kept; no tickets, no pins
+- [x] The queue page: in row time and caption edits, Cancel with Undo, Pause and Resume,
+  history, budget, quiet test, run log
+- [x] The quiet runner, prewarm, fallback, notifications and badge, settings
+- [x] Per person server limits and the pilot switch, edited on the admin page
+- [x] 152 Node tests and the pytest suite (1569 passed, 7 skipped, 2026-10-31T09:55:06+05:30, after the
+  review fixes); a headless Chromium run with the real extension and a local server
+- [ ] Phase 0 on the owner's Chrome: a composer in a hidden tab, a tab never shown, an
+  unfocused helper window on Linux, a tab moved without "Use here", a caption typed
+  unfocused. [Unverified] until then
+- [ ] A scheduled clip prepared in a real WhatsApp Web, by the owner
+- [ ] Resume's three choices and the alarm rebuild on every wake, end to end
+- [ ] A week of the owner's use of Prepare
+
+**Next, in order:** Phase 0 by the owner; then confirmed Send (Phase 8, which needs the
+owner's word and amends nothing until then, AGENTS.md Never, D-084); then Release 2
+(from a link); then Release 3 (the bulk bar).
 
 ---
 

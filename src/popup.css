@@ -143,3 +143,11 @@ video { width: 100%; max-height: 300px; border-radius: 8px; background: #000; }
 
 .skeleton { height: 18px; border-radius: 6px; background: var(--field); }
 .skeleton.short { width: 60%; }
+
+/* Scheduled Statuses settings: a group of its own under the connection form. */
+.group { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+label.check { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 600; cursor: pointer; }
+label.check span { flex: 1; font-size: 14px; }
+input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+input[type="time"]:disabled, select:disabled { opacity: 0.55; }

@@ -184,7 +184,7 @@ drives it (D-090), and when a capture, a load into WhatsApp or a words lookup fa
 `report()` in [wastatus/pages/hosted.js](wastatus/pages/hosted.js) posts to
 `/api/report`:
 
-- `source`: `capture`, `load`, `page` or `words`
+- `source`: `capture`, `load`, `page`, `words` or `schedule`
 - `phase` and `code`: the step and a short reason, at most 80 characters
 - `versions`: the extension's version and the browser's brands
 
@@ -194,6 +194,34 @@ person to 30 reports an hour, stores the row against their account, and raises
 by the server itself, with source `render`; feedback from the account page is kept
 there too, with source `feedback`. The last failure's code is also kept in the
 browser's `localStorage` so the feedback form can offer to include it.
+
+## The scheduled run log
+
+Added **2026-10-31T01:53:14+05:30**. Scheduled Statuses keep one more record, and it stays in the person's
+own browser: `schedLog` in `chrome.storage.local` (Table DM-7), the last 200 runs, shown
+on the queue page under **Run log**. It holds codes and timings only (E15): never a
+caption, a title, a clip name or a time zone.
+
+**Table OB-10: a scheduled run record**
+
+| Field | Meaning |
+|---|---|
+| `id` | the schedule's id (`s_` and ten characters), not a clip name |
+| `at`, `due`, `late` | when the run started, when it was due, and how late in milliseconds |
+| `ms` | how long placing the clip took |
+| `rung` | the placement rung used, `S0` to `S5`, or null |
+| `code` | the result: success, or `busy`, `ask`, `signed-out`, `composer-open`, `in-use`, `timeout`, `moved`, `closed`, `stopped`, `failed` |
+| `outcome` | the state the row ended in |
+| `manual` | true when the person pressed it (Show WhatsApp, Post it now) |
+| `focusMoved` | true if the run changed which window had focus, which a quiet run should never do |
+
+`placeStats` (Table DM-7) is the same idea per rung: wins, fails and the time taken, so
+a rung that stops working is skipped and shown as such by **Try quiet mode now (nothing
+is sent)**. A failed schedule the page saw is also reported to the server under the
+source `schedule` (see "Failure reports from the page and the extension"), with a code
+and versions and nothing about the clip. Nothing here is on the server, so the admin
+page cannot show a person's queue. [Unverified] on a real WhatsApp Web: no run has been
+logged by one yet.
 
 ## The admin page
 

@@ -2,6 +2,54 @@
 
 Human readable history. Newest first.
 
+## 2026-10-31, fifty-seventh pass
+
+Written **2026-10-31T01:51:00+05:30**.
+
+### Scheduled Statuses, Release 1: prepare only, from the editor
+
+D-105; the plan is [docs/scheduling.md](docs/scheduling.md) and what was built is its
+Section 15. On SnipShare a finished clip can now be **Scheduled** for a time or **Added
+to the queue** after the last one. The extension keeps the clip on the person's own
+computer (IndexedDB, in 2 MiB parts, size checked and a SHA-256 kept), and when the
+time comes it puts the clip in WhatsApp's composer for the person to send. It never
+presses Send: confirmed Send is not built, and AGENTS.md and D-084 still forbid it.
+
+- **The queue** is a page of the extension (`queue.html`, also from the toolbar
+  button's menu): a table ordered by time, each row's time and caption edited in place,
+  Cancel with Undo, Pause and Resume with three choices, a history of 30 days, the
+  budget of held clips, the run log. The one primary button is **Prepare next now**.
+- **The quiet runner** walks a ladder of placements (S0 to S5) that avoid taking focus,
+  learns per machine which rung works, and asks by notification when none does.
+  **Try quiet mode now (nothing is sent)** on the queue page tests it.
+- **Notifications and badge.** Every prepared clip says "in WhatsApp, press Send" with a
+  **Show WhatsApp** button and counts on the badge as Needs you, because in this
+  release every prepared clip needs a press and an open composer blocks the next run.
+- **Settings** in the options page: quiet hours (23:00 to 07:00 by default), the gap for
+  Add to queue (3 hours), bring WhatsApp forward, take focus when idle, a notice for
+  every post. The last three are off.
+- **Extension 2.1.0**, with four new permissions: `notifications`, `idle`,
+  `unlimitedStorage`, `contextMenus` (SECURITY.md). New port commands `schedule`,
+  `queue-peek` and `open-queue`; `hello` now lists `features`.
+- **The server** keeps per person limits an admin sets on the admin page: clips a day,
+  upload a day, scheduled posts, held clips, and the scheduling pilot switch. Admins
+  start with scheduling on, 90 posts and 1 GB; everyone else with it off, 30 posts and
+  400 MB. `/api/state` carries `scheduling`; `POST /api/admin/limits` edits it; failure
+  reports accept the source `schedule`.
+- **Tests.** 152 Node tests pass; the full pytest suite passes (1569 passed, 7 skipped),
+  counted 2026-10-31T09:55:06+05:30 after the fixes from an independent review: Undo of a resume restores
+  the pause; a Pause or a later time set while WhatsApp is being readied wins; a clip
+  handed to WhatsApp is never loaded again after a worker stop; alarm resets are
+  serialised; the helper window never closes WhatsApp; calls into a hung tab give up
+  after 5 s; a background tab the run opened is closed when the run fails before the
+  hand over, unless WhatsApp is signed out.
+
+**Not verified.** Phase 0 has not been run on the owner's Chrome, so every Chrome
+behaviour the plan labelled unverified still is, and nothing was tried in a real
+WhatsApp Web. A headless Chromium run with the real extension and a local hosted server
+covered the queue, but not resume's three choices end to end nor the alarm rebuild on
+every wake. Release 2 (from a link) and Release 3 (the bulk bar) are not built.
+
 ## 2026-10-26, fifty-sixth pass
 
 Written **2026-10-26T01:29:37+05:30**.

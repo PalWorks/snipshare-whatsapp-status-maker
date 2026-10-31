@@ -991,7 +991,8 @@ let staleArmed = null;
 let staleTimer = null;
 
 // What the notice calls each action when it asks for a second press.
-const STALE_VERBS = { load: "Load", send: "Send", download: "Download" };
+const STALE_VERBS = { load: "Load", send: "Send", download: "Download",
+                      schedule: "Schedule", "queue-add": "Add to queue" };
 
 function disarmStale() {
   clearTimeout(staleTimer);
@@ -1020,6 +1021,7 @@ function pastStale(button, event) {
 function paintPostButtons() {
   if (!current) return;
   if (HOSTED) {
+    paintSchedule();
     $("load").disabled = !HOSTED.ready();
     $("load-what").textContent = "Opens the Status composer in WhatsApp Web, in this "
       + "browser, with the clip and the caption in place. You press Send there.";
@@ -1042,6 +1044,309 @@ function paintPostButtons() {
       ? "WhatsApp is being driven by another request. One at a time."
       : "";
   $("post-hint").hidden = !$("post-hint").textContent;
+}
+
+/* ─────────────────────────  scheduling  ───────────────────────── */
+
+/* SnipShare only: `window.SnipShare` exists, so the local tool never builds any of
+   this (the elements stay hidden). The extension keeps the clip and, at the time,
+   puts it in WhatsApp for the person to send. This release prepares only (D-084). */
+
+const SCHED_MIN_MS = 2 * 60000;          // the extension refuses less (queue.MIN_AHEAD_MS)
+const SCHED_MAX_MS = 30 * 86400000;      // and more
+// The extension's quiet hours are its own setting, which this page cannot see, so
+// the warning uses the default window and says "quiet hours" without claiming more.
+const QUIET = { start: 23 * 60, end: 7 * 60 };
+let schedMode = "schedule";              // or "queue": the same picker, after the last one
+let schedChoice = null;                  // the preset picked: a key, or "custom"
+let schedBusy = false;
+let upNextSeq = 0;
+
+const inQuiet = (date) => {
+  const minute = date.getHours() * 60 + date.getMinutes();
+  return minute >= QUIET.start || minute < QUIET.end;
+};
+
+/* "Sat 1 Nov, 6:00 PM, in 17 hours". */
+function describeDue(date, now = Date.now()) {
+  const text = `${date.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}, `
+    + date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const minutes = Math.round((date.getTime() - now) / 60000);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(minutes / 1440);
+  const away = minutes < 90 ? `in ${minutes} minutes`
+    : minutes < 2880 ? `in ${hours} hours`
+      : `in ${days} days`;
+  return `${text}, ${away}`;
+}
+
+/* The presets that are still ahead (U9): a passed one is not offered at all. */
+function schedPresets(now = new Date()) {
+  const at = (days, hour) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() + days);
+    date.setHours(hour, 0, 0, 0);
+    return date;
+  };
+  const list = [
+    { key: "hour", label: "In one hour", date: new Date(now.getTime() + 3600000) },
+    { key: "evening", label: "This evening, 6 PM", date: at(0, 18) },
+    { key: "morning", label: "Tomorrow, 9 AM", date: at(1, 9) },
+  ].filter((p) => p.date.getTime() - now.getTime() >= SCHED_MIN_MS);
+  list.push({ key: "last", label: "After the last one", date: null });
+  return list;
+}
+
+const localValue = (date) => {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+function paintSchedPresets() {
+  const box = $("sched-presets");
+  box.textContent = "";
+  schedPresets().forEach((preset) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip";
+    button.dataset.preset = preset.key;
+    button.setAttribute("role", "radio");
+    button.setAttribute("aria-checked", String(schedChoice === preset.key));
+    button.textContent = preset.label;
+    if (preset.date && inQuiet(preset.date)) {
+      const quiet = document.createElement("small");
+      quiet.textContent = "quiet hours";
+      button.append(" ", quiet);
+    }
+    box.append(button);
+  });
+}
+
+/* Reads the picker: what it means, in words, before anything is saved. Returns
+   {due} or {afterLast: true} when it can be saved, null when it cannot. */
+function readSched() {
+  const words = $("sched-words");
+  const warn = $("sched-warn");
+  warn.hidden = true;
+  if (schedChoice === "last") {
+    words.textContent = "After the last post in your queue, with the usual gap. "
+      + "If the queue is empty, that gap from now.";
+    return { afterLast: true };
+  }
+  const value = $("sched-time").value;
+  if (!value) {
+    words.textContent = "Choose a time.";
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    words.textContent = "That is not a time. Choose one from the list or the field.";
+    return null;
+  }
+  const ahead = date.getTime() - Date.now();
+  if (ahead < SCHED_MIN_MS) {
+    words.textContent = "Choose a time at least 2 minutes from now.";
+    return null;
+  }
+  if (ahead > SCHED_MAX_MS) {
+    words.textContent = "Choose a time within the next 30 days.";
+    return null;
+  }
+  words.textContent = describeDue(date);
+  if (inQuiet(date)) {
+    warn.textContent = "That is in quiet hours, 11 PM to 7 AM unless you changed them in the "
+      + "queue's settings. Choose it only if you want it then.";
+    warn.hidden = false;
+  }
+  return { due: date.getTime() };
+}
+
+function chooseSched(key) {
+  schedChoice = key;
+  const preset = schedPresets().find((p) => p.key === key);
+  if (preset && preset.date) $("sched-time").value = localValue(preset.date);
+  if (key === "last") $("sched-time").value = "";
+  paintSchedPresets();
+  readSched();
+  hide($("sched-error"));
+}
+
+function openSched(mode) {
+  if (!current || !HOSTED || !HOSTED.canSchedule()) return;
+  schedMode = mode;
+  hide($("sched-error"));
+  $("sched-title").textContent = mode === "queue" ? "Add to the queue" : "Schedule this Status";
+  $("sched-save").textContent = mode === "queue" ? "Add to queue" : "Schedule it";
+  $("sched-caption").value = captionText();
+  const now = new Date();
+  $("sched-time").min = localValue(new Date(now.getTime() + SCHED_MIN_MS));
+  $("sched-time").max = localValue(new Date(now.getTime() + SCHED_MAX_MS));
+  $("sched-pick").hidden = false;
+  const first = mode === "queue" ? "last" : schedPresets()[0].key;
+  unhide($("sched"));
+  $("schedule").setAttribute("aria-expanded", String(mode === "schedule"));
+  $("queue-add").setAttribute("aria-expanded", String(mode === "queue"));
+  chooseSched(first);
+  $("sched").scrollIntoView({ block: "nearest" });
+  (mode === "queue" ? $("sched-save") : $("sched-presets").querySelector(".chip")).focus();
+}
+
+function closeSched(focus = true) {
+  if (schedBusy) return;
+  hide($("sched"));
+  $("schedule").setAttribute("aria-expanded", "false");
+  $("queue-add").setAttribute("aria-expanded", "false");
+  if (focus) (schedMode === "queue" ? $("queue-add") : $("schedule")).focus();
+}
+
+/* Each code the extension's worker can answer with, in words that say what to do. */
+function schedProblem(error) {
+  const limits = HOSTED.scheduling;
+  const mb = Math.round(limits.budget_bytes / 1e6);
+  return {
+    past: "Choose a time at least 2 minutes from now.",
+    far: "Choose a time within the next 30 days.",
+    limit: `You already have ${limits.pending} scheduled posts, the most allowed. `
+      + "Open the queue and cancel one, or wait for one to be posted, then try again.",
+    budget: `The clips kept on this computer would pass ${mb} MB. Open the queue and `
+      + "cancel a post to free room, then try again.",
+    quota: "This computer has no room left to keep the clip. Free some disk space, or "
+      + "cancel a scheduled post, then try again.",
+    network: "The clip could not be downloaded. Check the connection and try again.",
+    gone: "This clip is no longer on SnipShare. Make it again, then schedule it.",
+    size: "The clip arrived the wrong size, so it was not kept. Try again.",
+    stopped: "The page was closed or reloaded while the clip was being kept, so the "
+      + "schedule was not saved. Try again.",
+  }[error.code] || error.message;
+}
+
+// Opening the picker is the press that is held back by a clip older than the form,
+// as for Load; closing it is never held.
+$("schedule").addEventListener("click", (event) => {
+  if (!$("sched").hidden && schedMode === "schedule") return closeSched();
+  if (pastStale($("schedule"), event)) openSched("schedule");
+});
+$("queue-add").addEventListener("click", (event) => {
+  if (!$("sched").hidden && schedMode === "queue") return closeSched();
+  if (pastStale($("queue-add"), event)) openSched("queue");
+});
+$("sched-cancel").addEventListener("click", () => closeSched());
+$("sched").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeSched();
+});
+$("sched-presets").addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-preset]");
+  if (chip) chooseSched(chip.dataset.preset);
+});
+$("sched-time").addEventListener("input", () => {
+  schedChoice = "custom";
+  paintSchedPresets();
+  readSched();
+  hide($("sched-error"));
+});
+
+$("sched").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (schedBusy || !current) return;
+  const when = readSched();
+  if (!when) {
+    fail($("sched-error"), $("sched-words").textContent || "Choose a time.");
+    return $("sched-time").focus();
+  }
+  schedBusy = true;
+  hide($("sched-error"));
+  const save = $("sched-save");
+  const label = save.textContent;
+  [save, $("sched-cancel"), $("sched-time"), $("sched-caption")].forEach((e) => { e.disabled = true; });
+  $("sched-presets").querySelectorAll("button").forEach((b) => { b.disabled = true; });
+  save.setAttribute("aria-busy", "true");
+  $("sched-bar").removeAttribute("value");
+  $("sched-progress-text").textContent = "Keeping the clip on this computer";
+  unhide($("sched-progress"));
+  try {
+    const answer = await HOSTED.schedule(current, $("sched-caption").value.trim(), when, (p) => {
+      if (p.message) $("sched-progress-text").textContent = p.message;
+      if (typeof p.progress === "number") $("sched-bar").value = p.progress;
+    });
+    schedBusy = false;
+    closeSched(false);
+    const note = answer && answer.note ? ` ${answer.note}` : "";
+    const due = answer && answer.schedule && answer.schedule.due
+      ? describeDue(new Date(answer.schedule.due)) : "";
+    const toast = (text, options) => (window.SnipShareUI
+      ? window.SnipShareUI.toast(text, options) : null);
+    toast(due ? `Scheduled for ${due}.${note}` : `Added to your queue.${note}`, {
+      action: { label: "Open the queue", run: () => openQueuePage() }, timeout: 10000,
+    });
+    $("schedule").focus();
+    refreshUpNext();
+  } catch (error) {
+    schedBusy = false;
+    fail($("sched-error"), schedProblem(error));
+    $("sched-error").scrollIntoView({ block: "nearest" });
+  } finally {
+    schedBusy = false;
+    save.textContent = label;
+    save.removeAttribute("aria-busy");
+    [save, $("sched-cancel"), $("sched-time"), $("sched-caption")].forEach((e) => { e.disabled = false; });
+    $("sched-presets").querySelectorAll("button").forEach((b) => { b.disabled = false; });
+    hide($("sched-progress"));
+  }
+});
+
+async function openQueuePage() {
+  try {
+    await HOSTED.openQueue();
+  } catch (error) {
+    fail($("post-error"), error.message);
+  }
+}
+$("queue-open").addEventListener("click", openQueuePage);
+
+/* Up next: a glance at the next three, from the extension. Quiet when it cannot
+   say, since it is not a task. */
+async function refreshUpNext() {
+  const mine = ++upNextSeq;
+  const found = await HOSTED.peek();
+  if (mine !== upNextSeq) return;
+  const list = $("upnext-list");
+  list.textContent = "";
+  if (!found) return hide($("upnext"));
+  unhide($("upnext"));
+  const next = Array.isArray(found.next) ? found.next : [];
+  $("upnext-empty").hidden = next.length > 0;
+  next.forEach((item) => {
+    const li = document.createElement("li");
+    const when = document.createElement("span");
+    when.className = "upnext__when";
+    when.textContent = describeDue(new Date(item.due));
+    const words = document.createElement("span");
+    words.className = "upnext__what";
+    words.textContent = `${(item.caption || "").split("\n")[0] || "No caption"}`;
+    const state = document.createElement("span");
+    state.className = "upnext__state";
+    state.textContent = item.word || "";
+    li.append(when, words, state);
+    list.append(li);
+  });
+  $("queue-open").textContent = found.needsYou
+    ? `Scheduled (${found.needsYou} need you)` : "Scheduled";
+}
+
+/* What shows, from the three things that decide it. Called with every repaint of
+   the post buttons, so a late answer from the extension or the server shows it. */
+function paintSchedule() {
+  if (!HOSTED) return;
+  const can = Boolean(current) && HOSTED.canSchedule();
+  const wasShown = !$("doer-schedule").hidden;
+  $("doer-schedule").hidden = !can;
+  const note = current ? HOSTED.whyNotSchedule() : "";
+  $("sched-phone").textContent = note;
+  $("sched-phone").hidden = !note;
+  if (!can && !$("sched").hidden) { schedBusy = false; closeSched(false); }
+  if (!can) { $("upnext").hidden = true; upNextSeq += 1; }
+  else if (!wasShown) refreshUpNext();
 }
 
 /* ─────────────────────────  deleting a clip  ───────────────────────── */
@@ -3505,6 +3810,10 @@ function restore() {
 }
 
 if (HOSTED) {
+  // Up next follows the queue, which changes without this page being told.
+  setInterval(() => {
+    if (!document.hidden && current && HOSTED.canSchedule()) refreshUpNext();
+  }, 30000);
   // The extension answered, or stopped answering: the buttons follow.
   window.SnipShareRepaint = () => {
     atLaptop = HOSTED.ready();

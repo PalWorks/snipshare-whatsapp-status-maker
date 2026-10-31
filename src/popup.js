@@ -87,6 +87,69 @@ function say(el, text, isError) {
   return false;
 }
 
+// -- scheduling settings ----------------------------------------------------------
+
+// Defaults match the contract: quiet hours on, an evening gap of three hours, and the
+// two ways of taking focus off until the person turns them on (docs/scheduling.md T1).
+const SCHEDULE_DEFAULTS = {
+  quietOn: true, quietStart: "23:00", quietEnd: "07:00", gapMinutes: 180,
+  bringForward: false, idleForward: false, perPostNotices: false,
+};
+
+function fillSchedule(s) {
+  const v = { ...SCHEDULE_DEFAULTS, ...s };
+  $("sched-quiet-on").checked = !!v.quietOn;
+  $("sched-quiet-start").value = v.quietStart;
+  $("sched-quiet-end").value = v.quietEnd;
+  // A gap set some other way (an older build, a hand edit) still shows as itself.
+  const gap = String(v.gapMinutes);
+  if (![...$("sched-gap").options].some((o) => o.value === gap)) {
+    $("sched-gap").add(new Option(`${gap} minutes`, gap));
+  }
+  $("sched-gap").value = gap;
+  $("sched-forward").checked = !!v.bringForward;
+  $("sched-idle").checked = !!v.idleForward;
+  $("sched-notices").checked = !!v.perPostNotices;
+  quietTimesState();
+  $("sched-result").hidden = true;
+}
+
+function quietTimesState() {
+  const off = !$("sched-quiet-on").checked;
+  $("sched-quiet-start").disabled = off;
+  $("sched-quiet-end").disabled = off;
+}
+
+async function saveSchedule() {
+  quietTimesState();
+  const start = $("sched-quiet-start").value;
+  const end = $("sched-quiet-end").value;
+  // An emptied time field would store nothing the runner can read.
+  if (!start || !end) return say($("sched-result"), "Choose a time in both fields", true);
+  const changes = {
+    quietOn: $("sched-quiet-on").checked, quietStart: start, quietEnd: end,
+    gapMinutes: Number($("sched-gap").value) || SCHEDULE_DEFAULTS.gapMinutes,
+    bringForward: $("sched-forward").checked, idleForward: $("sched-idle").checked,
+    perPostNotices: $("sched-notices").checked,
+  };
+  await chrome.storage.local.set({ settings: { ...(await settings()), ...changes } });
+  say($("sched-result"), "Saved", false);
+}
+
+// The person pressed this, so foreground is right: focus the open queue, or open one.
+// The SnipShare page's link does the same through open-queue on the external port.
+async function openQueue() {
+  const url = chrome.runtime.getURL("queue.html");
+  const [open] = await chrome.tabs.query({ url });
+  if (open) {
+    await chrome.tabs.update(open.id, { active: true });
+    await chrome.windows.update(open.windowId, { focused: true });
+  } else {
+    await chrome.tabs.create({ url });
+  }
+  window.close();
+}
+
 // -- the form -------------------------------------------------------------------
 
 async function showForm() {
@@ -302,9 +365,15 @@ function wire() {
     $("settings-server").value = s.server;
     $("settings-quality").value = s.quality;
     $("settings-result").hidden = true;
+    fillSchedule(s);
     show("settings");
   });
   $("settings-back").addEventListener("click", () => main());
+  for (const id of ["sched-quiet-on", "sched-quiet-start", "sched-quiet-end", "sched-gap",
+                    "sched-forward", "sched-idle", "sched-notices"]) {
+    $(id).addEventListener("change", saveSchedule);
+  }
+  $("open-queue").addEventListener("click", openQueue);
   $("settings-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await busy($("settings-save"), "Saving…", () =>

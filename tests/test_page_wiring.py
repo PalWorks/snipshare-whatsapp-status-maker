@@ -916,3 +916,90 @@ class TestTopTextThatDoesNotFit:
         assert "Move it down" in block
         # `return`, so the "preview of the words" line never overwrites it.
         assert "return say(" in block
+
+
+class TestSchedulingControls:
+    """Scheduled Statuses on the hosted page (docs/scheduling.md, FR-1, U9, U10).
+
+    The controls are in `index.html`, which the local tool serves too, so what
+    keeps them out of the local tool is that they start hidden and only the hosted
+    script (`window.SnipShare`) ever shows them. A control that starts visible, or
+    a submit button that loses its form, breaks without raising anything.
+    """
+
+    HIDDEN_AT_START = ("doer-schedule", "sched", "sched-phone", "upnext")
+
+    @pytest.mark.parametrize("name", HIDDEN_AT_START)
+    def test_it_starts_hidden(self, page, name):
+        tag = re.search(rf"<[a-z]+[^>]*id=\"{name}\"[^>]*>", page, re.S)
+        assert tag and re.search(r"\shidden[\s>]", tag.group(0)), (
+            f"{name} must start hidden: the local tool never shows it")
+
+    def test_the_primary_stays_load_into_whatsapp(self, page):
+        assert 'id="load">Load into WhatsApp</button>' in page
+        assert re.search(r'id="schedule"[^>]*>Schedule</button>', page, re.S)
+        assert re.search(r'id="queue-add"[^>]*>Add to queue</button>', page, re.S)
+        # Neither is the filled button: only #load and the picker's own save are.
+        assert "button--primary" not in re.search(
+            r'<div class="doer" id="doer-schedule".*?</div>\s*<span', page, re.S).group(0)
+
+    def test_the_save_button_is_inside_the_picker_form(self, page):
+        assert inside(page, '<form class="sched" id="sched"', "</form>", 'id="sched-save"')
+        tag = re.search(r'<button[^>]*id="sched-save"[^>]*>', page, re.S).group(0)
+        assert 'type="submit"' in tag
+
+    def test_the_picker_says_what_it_does(self, page):
+        form = page[page.index('id="sched"'):page.index("</form>", page.index('id="sched"'))]
+        assert "Puts it in WhatsApp for you to send" in form
+        assert "Keep Chrome open" in form and "computer awake" in form
+        assert 'type="datetime-local"' in form
+        assert 'id="sched-words"' in form, "the interpreted time in words"
+        assert 'for="sched-caption"' in form
+
+    def test_the_phone_line_is_the_one_the_plan_words(self, page):
+        assert ("Scheduling works in Chrome on a computer with the extension"
+                in re.sub(r"\s+", " ", page))
+
+    def test_the_scripts_ask_only_the_hosted_bridge(self, script):
+        # Every entry point goes through HOSTED, which the local page does not have.
+        assert "HOSTED.canSchedule()" in script
+        for call in ("HOSTED.schedule(", "HOSTED.peek()", "HOSTED.openQueue()"):
+            assert call in script
+        assert 'id="schedule"' not in script, "the buttons are markup, not built by script"
+        for name in ("schedule", "queue-add", "queue-open", "sched-cancel"):
+            assert f'$("{name}").addEventListener("click"' in script
+
+    def test_every_error_code_the_worker_gives_has_words(self, script):
+        body = script[script.index("function schedProblem"):script.index('$("schedule").addEventListener')]
+        for code in ("past", "far", "limit", "budget", "quota", "network", "gone",
+                     "size", "stopped"):
+            assert re.search(rf"\b{code}:", body), code
+
+    def test_presets_that_have_passed_are_not_offered(self, script):
+        assert ".filter((p) => p.date.getTime() - now.getTime() >= SCHED_MIN_MS)" in script
+        assert '"quiet hours"' in script
+
+    def test_prepare_is_the_only_action(self):
+        hosted = (WEB.parent / "pages" / "hosted.js").read_text(encoding="utf-8")
+        assert 'action: "prepare"' in hosted
+        assert 'action: "send"' not in hosted
+
+    def test_the_bridge_checks_the_extension_feature_and_the_pilot(self):
+        hosted = (WEB.parent / "pages" / "hosted.js").read_text(encoding="utf-8")
+        assert 'extension.features.includes("schedule")' in hosted
+        assert "scheduling.enabled" in hosted
+        assert "!mobile" in hosted or "mobile" in hosted
+        for cmd in ('cmd: "schedule"', 'cmd: "queue-peek"', 'cmd: "open-queue"'):
+            assert cmd in hosted
+
+    def test_the_styles_keep_the_hidden_attribute_in_force(self):
+        css = (WEB.parent / "pages" / "hosted.css").read_text(encoding="utf-8")
+        assert "#doer-schedule[hidden]" in css and ".sched[hidden]" in css
+
+    def test_a_stale_clip_holds_back_both_schedule_buttons_once(self, script):
+        assert ('schedule: "Schedule", "queue-add": "Add to queue"' in script)
+        assert 'pastStale($("schedule"), event)' in script
+        assert 'pastStale($("queue-add"), event)' in script
+        # Closing an open picker is checked before the stale press, so it is never held.
+        body = script[script.index('$("schedule").addEventListener("click"'):]
+        assert body.index("closeSched()") < body.index('pastStale($("schedule")')

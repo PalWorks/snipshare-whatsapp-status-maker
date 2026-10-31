@@ -140,11 +140,12 @@
           <span class="pill pill--${admin ? "admin" : escape(person.status)}">${admin ? "Admin" : STATUS_WORDS[person.status] || escape(person.status)}</span>
           <span>seen ${escape(ago(person.last_seen))}</span>
           <span>${r.clips || 0} clips${r.failures ? `, ${r.failures} failed` : ""}</span>
+          ${person.limits ? `<span>${person.limits.scheduling ? "scheduling on" : "scheduling off"}</span>` : ""}
         </span>
-        ${admin ? "" : `<button type="button" class="row__action iconbutton" data-menu aria-haspopup="menu"
+        <button type="button" class="row__action iconbutton" data-menu aria-haspopup="menu"
             aria-expanded="false" aria-label="More for ${escape(person.name || person.email)}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
-        </button>`}
+        </button>
       </div>`;
   }
 
@@ -192,14 +193,18 @@
     closeMenus();
     if (open) return;
     const person = people.find((p) => p.email === row.dataset.email);
-    const choices = person.status === "approved"
+    const admin = person.role === "admin";
+    // An admin is never suspended or deleted here (the list in the environment is
+    // the authority); their figures can still be set.
+    const choices = admin ? [] : person.status === "approved"
       ? [["suspended", "Suspend"]] : [["approved", person.status === "declined" ? "Approve after all" : "Let back in"]];
     const menu = document.createElement("div");
     menu.className = "menu";
     menu.setAttribute("role", "menu");
-    menu.innerHTML = choices.map(([status, label]) =>
-      `<button type="button" role="menuitem" data-status="${status}">${label}</button>`).join("")
-      + '<button type="button" role="menuitem" class="menu__danger" data-forget="1">Delete account</button>';
+    menu.innerHTML = '<button type="button" role="menuitem" data-limits="1">Limits and scheduling</button>'
+      + choices.map(([status, label]) =>
+        `<button type="button" role="menuitem" data-status="${status}">${label}</button>`).join("")
+      + (admin ? "" : '<button type="button" role="menuitem" class="menu__danger" data-forget="1">Delete account</button>');
     row.append(menu);
     button.setAttribute("aria-expanded", "true");
     menu.querySelector("button").focus();
@@ -208,6 +213,7 @@
       if (!item) return;
       closeMenus();
       if (item.dataset.forget) return confirmForget(row, person);
+      if (item.dataset.limits) return editLimits(row, person);
       return decide(person, item.dataset.status, null);
     });
   });
@@ -236,11 +242,104 @@
     });
   }
 
+  /* ── a person's limits ─────────────────────────────────── */
+
+  // Whole numbers inside what the server accepts (accounts.LIMIT_BOUNDS); the server
+  // checks again, this only says so next to the field before the press.
+  const LIMIT_FIELDS = [
+    ["clips", "Clips a day", 1, 1000, (l) => l.clips],
+    ["upload_mb", "Upload a day, MB", 1, 20000, (l) => Math.round(l.upload_bytes / 1e6)],
+    ["pending", "Scheduled posts at once", 0, 500, (l) => l.pending],
+    ["budget_mb", "Held clips, MB", 0, 20000, (l) => Math.round(l.budget_bytes / 1e6)],
+  ];
+
+  function editLimits(row, person) {
+    const now = person.limits;
+    if (!now || row.querySelector(".limits")) return;
+    const box = document.createElement("form");
+    box.className = "row__edit limits";
+    box.noValidate = true;
+    box.innerHTML = `<p><strong>Limits for ${escape(person.name || person.email)}</strong>
+      <span class="muted">Blank puts a figure back to its default.</span></p>
+      <label class="check"><input type="checkbox" name="scheduling"${now.scheduling ? " checked" : ""}>
+        <span>Scheduling pilot on${now.custom.scheduling === undefined ? " (default)" : ""}</span></label>
+      <div class="limits__fields">${LIMIT_FIELDS.map(([key, label, low, high, read]) => `
+        <div class="field"><label for="lim-${key}">${label}</label>
+          <input type="text" inputmode="numeric" autocomplete="off" id="lim-${key}" name="${key}"
+                 value="${read(now)}" data-low="${low}" data-high="${high}"
+                 aria-describedby="lim-${key}-e">
+          <p class="error" id="lim-${key}-e" role="alert" hidden></p></div>`).join("")}</div>
+      <p class="error" id="lim-form-e" role="alert" hidden></p>
+      <div class="row__buttons"><button type="button" class="button button--small" data-no>Cancel</button>
+      <button type="button" class="button button--small" data-defaults>Use defaults</button>
+      <button type="submit" class="button button--small button--primary">Save</button></div>`;
+    row.classList.add("row--editing");
+    row.append(box);
+    box.querySelector("input[name=clips]").focus();
+    const close = () => { box.remove(); row.classList.remove("row--editing"); };
+    box.querySelector("[data-no]").addEventListener("click", close);
+    box.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+
+    const check = (input) => {
+      const text = input.value.trim();
+      const error = $(`${input.id}-e`);
+      let problem = "";
+      if (text !== "") {
+        if (!/^\d+$/.test(text)) problem = "Use a whole number, like 30.";
+        else if (Number(text) < Number(input.dataset.low) || Number(text) > Number(input.dataset.high)) {
+          problem = `Use a number from ${input.dataset.low} to ${input.dataset.high}.`;
+        }
+      }
+      error.textContent = problem;
+      error.hidden = !problem;
+      input.setAttribute("aria-invalid", String(Boolean(problem)));
+      return !problem;
+    };
+    box.querySelectorAll("input[type=text]").forEach((input) =>
+      input.addEventListener("input", () => check(input)));
+
+    async function save(changes, button) {
+      busy(button, "Saving");
+      try {
+        await api("/api/admin/limits", { email: person.email, changes });
+        close();
+        say(`Limits saved for ${person.name || person.email}`);
+        load(true);
+      } catch (error) {
+        idle(button);
+        $("lim-form-e").textContent = error.message;
+        $("lim-form-e").hidden = false;
+      }
+    }
+
+    box.querySelector("[data-defaults]").addEventListener("click", (event) => {
+      save({ clips: null, upload_mb: null, pending: null, budget_mb: null, scheduling: null },
+        event.currentTarget);
+    });
+    box.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const inputs = [...box.querySelectorAll("input[type=text]")];
+      if (!inputs.map(check).every(Boolean)) return inputs.find((i) => i.getAttribute("aria-invalid") === "true").focus();
+      const changes = {};
+      // Only what differs from what is in force now: a figure that merely equals
+      // today's default is not pinned to it.
+      LIMIT_FIELDS.forEach(([key, , , , read]) => {
+        const text = box.elements[key].value.trim();
+        if (text === "") { if (now.custom[key] !== undefined) changes[key] = null; return; }
+        if (Number(text) !== read(now)) changes[key] = Number(text);
+      });
+      const on = box.elements.scheduling.checked;
+      if (on !== now.scheduling) changes.scheduling = on;
+      if (!Object.keys(changes).length) return close();
+      return save(changes, box.querySelector("[type=submit]"));
+    });
+  }
+
   function welcome(person) {
     const site = SITE && SITE !== "this site" ? SITE : location.origin;
     return `Hello ${person.name || ""},\n\nYou are in. Sign in to SnipShare at ${site}/signin `
       + `with your Google account (${person.email}).\n\nMaking a clip needs Google Chrome on a `
-      + `computer with the SnipShare extension: ${site}/install\n\nYou can make ${clipsPerDay} clips a day.`;
+      + `computer with the SnipShare extension: ${site}/install\n\nYou can make ${person.limits ? person.limits.clips : clipsPerDay} clips a day.`;
   }
 
   async function copyWelcome(person) {

@@ -5,10 +5,55 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-105: Scheduled Statuses, Release 1: what was decided while building it
+
+**Date:** 2026-10-31T01:51:00+05:30
+**Status:** built; Phase 0 not yet run on the owner's Chrome
+
+Release 1 of [docs/scheduling.md](docs/scheduling.md) (From the editor, Prepare only,
+every clip kept on the computer) was built on branch `feat/scheduling-r1`. Section 14
+of the plan and D-104 stand. These were decided during the build, and each refines the
+plan where it says so:
+
+- **The WhatsApp tab stays undiscardable while a clip is prepared and unsent**, up to 6
+  hours. Chrome discarding the tab would destroy the unsent composer.
+- **Every prepared clip notifies** "in WhatsApp, press Send", with a **Show WhatsApp**
+  button, and **counts as Needs you** on the badge. In this release every prepared clip
+  needs a press, and an open composer blocks the next run, so a silent success would
+  leave the queue stuck without a word. This refines T2, which had kept success
+  silent apart from a daily summary; per post notices stay a setting and the daily
+  summary stays.
+- **Schedule and Add to queue use the same two press stale preview check** as Load
+  into WhatsApp and Download: a preview out of step with the settings is not scheduled
+  on the first press.
+- **On the queue page the row buttons are secondary**, so **Prepare next now** is the
+  one primary button. The label is "Prepare next now", not "Post next now" (U3): nothing
+  is posted by it.
+- **Scheduled runs have their own pacing key**, 40 an hour, so the page's ten loads an
+  hour cannot starve a queue (E4).
+- **Extension version 2.1.0**, with the permissions `notifications`, `idle`,
+  `unlimitedStorage` and `contextMenus`. Each is explained in SECURITY.md.
+- **Per person server limits**: clips a day, upload a day, scheduled posts, held clip
+  budget and a scheduling pilot switch, set by an admin through `POST /api/admin/limits`
+  and carried to the page in `/api/state` as `scheduling`. Admins default to on, 90
+  posts and 1 GB; others to off, 30 posts and 400 MB. The extension enforces the figures
+  the page last told it.
+- **Not built, on purpose:** pressing Send in any form (Phase 8, still gated on a week
+  of Prepare runs and the owner's word, AGENTS.md Never, D-084); From a link (Release
+  2); the bulk bar (Release 3, though `queue.js` holds pure `shift` and `spread` for
+  it); tickets and pins (struck by Section 14).
+
+**Unverified.** Phase 0 has not been run on the owner's Chrome: the hidden tab
+composer, a tab that has never been shown, `focused: false` on Linux, moving a tab
+between windows without WhatsApp's "Use here", and typing a caption in an unfocused
+tab. The ladder's order is learned per machine, not assumed.
+
+---
+
 ## D-104: Scheduled Statuses: the owner's first answers
 
 **Date:** 2026-10-31T00:18:32+05:30
-**Status:** decided by the owner; nothing built
+**Status:** decided by the owner; Release 1 built 2026-10-31T01:51:00+05:30, see D-105; the rest not built
 
 The owner asked for Statuses to be scheduled from the extension and run without
 taking focus, with today's tab model as the fallback. The requirement and plan are in

@@ -11,8 +11,11 @@
 "use strict";
 
 // Where SnipShare is. `config.js` in the repository names a local copy; the built
-// extension carries the real address (scripts/build_extension.py).
-importScripts("config.js");
+// extension carries the real address (scripts/build_extension.py). The other four are
+// Scheduled Statuses (docs/scheduling.md): the queue's rules, the clips kept for it,
+// placing a clip in WhatsApp (manual loads and scheduled runs alike), and the
+// schedule's store and alarms.
+importScripts("config.js", "queue.js", "custody.js", "place.js", "schedule.js");
 
 const DEFAULTS = { server: CONFIG.site, token: "", quality: "hd720" };
 const PHASES_ACTIVE = ["capturing", "uploading", "queued", "rendering", "downloading"];
@@ -49,11 +52,27 @@ async function saveJob(job) {
   return job;
 }
 
+// Scheduled posts that need the person (missed, failed, asked) take the badge over the
+// job's, because they are waiting on a press and the job is not (Section 14, U1).
+let shownJob = null;
+let needsYouCount = 0;
+
 function badge(job) {
+  shownJob = job;
   const phase = job && job.phase;
-  const text = !phase ? "" : PHASES_ACTIVE.includes(phase) ? "…" : phase === "ready" ? "✓" : phase === "failed" ? "!" : "";
+  let text = !phase ? "" : PHASES_ACTIVE.includes(phase) ? "…" : phase === "ready" ? "✓" : phase === "failed" ? "!" : "";
+  let color = phase === "failed" ? "#b3261e" : "#1b7f3b";
+  if (needsYouCount > 0) {
+    text = needsYouCount > 99 ? "99+" : String(needsYouCount);
+    color = "#b3261e";
+  }
   chrome.action.setBadgeText({ text }).catch(() => {});
-  chrome.action.setBadgeBackgroundColor({ color: phase === "failed" ? "#b3261e" : "#1b7f3b" }).catch(() => {});
+  chrome.action.setBadgeBackgroundColor({ color }).catch(() => {});
+}
+
+function needsYouBadge(count) {
+  needsYouCount = count || 0;
+  badge(shownJob);
 }
 
 let dbPromise = null;
@@ -88,11 +107,13 @@ async function forgetBlobs(jobKey) {
 }
 
 // Anything stored for a job that is no longer the job: left behind when the worker
-// was stopped between a Stop forgetting the job and deleting its files.
+// was stopped between a Stop forgetting the job and deleting its files. A scheduled
+// clip's parts (`sched:`) are custody.js's to keep and to sweep, never this (E12).
 async function sweepBlobs() {
   const job = await getJob();
   const keys = await idb("readonly", (s) => s.getAllKeys());
   for (const key of keys) {
+    if (String(key).startsWith(SnipCustody.PREFIX)) continue;
     if (!job || !String(key).startsWith(`${job.key}:`)) await idbDelete(key);
   }
 }
@@ -621,12 +642,11 @@ async function download(job) {
 }
 
 // -- WhatsApp ----------------------------------------------------------------------
-
-async function whatsappTab() {
-  const [found] = await chrome.tabs.query({ url: "https://web.whatsapp.com/*" });
-  if (found) return found;
-  return chrome.tabs.create({ url: "https://web.whatsapp.com/", active: true });
-}
+//
+// place.js holds the one way into WhatsApp's composer and its one-at-a-time lock, so
+// a person's Load and a scheduled run can never fight over the same composer. A press
+// here is a person's, so it is `manual`: WhatsApp comes forward, as it always has
+// (D-084). Nothing here or there presses Send.
 
 async function signedIn(tabId) {
   try {
@@ -648,71 +668,12 @@ async function loadIntoWhatsApp() {
   return whatsappLoad(clip, job.clip.name, job.clip.caption, aborter.signal);
 }
 
-// Opens the Status composer with this clip and caption in place. Never sends.
-// One load at a time, whichever path asks: two would fight over the same composer.
-let loadingWhatsApp = false;
-
 async function whatsappLoad(clip, name, caption, signal) {
-  if (loadingWhatsApp) return { ok: false, error: "WhatsApp is already opening a clip. Wait for it to finish" };
-  loadingWhatsApp = true;
-  try {
-    return await whatsappLoadOnce(clip, name, caption, signal);
-  } finally {
-    loadingWhatsApp = false;
+  const result = await SnipPlace.load({ clip, name, caption, manual: true, settings: await settings(), signal });
+  if (result && !result.ok && result.code === "busy" && !result.error) {
+    return { ...result, error: "WhatsApp is already opening a clip. Wait for it to finish" };
   }
-}
-
-// `signal` is the asking path's Stop: once it fires, nothing more is done in
-// WhatsApp, and a composer half way through loading is let go.
-async function whatsappLoadOnce(clip, name, caption, signal) {
-  const halted = () => !!(signal && signal.aborted);
-  const STOPPED = { ok: false, error: "Stopped" };
-  if (halted()) return STOPPED;
-  const tab = await whatsappTab();
-  // Pressed by a person who wants to see WhatsApp, so it comes to the front; and a
-  // background tab is throttled hard enough to make the composer time out.
-  await chrome.tabs.update(tab.id, { active: true });
-  await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
-  const until = Date.now() + 120000;
-  while (!(await signedIn(tab.id))) {
-    if (halted()) return STOPPED;
-    if (Date.now() > until) return { ok: false, error: "WhatsApp Web is not signed in. Scan the QR code in that tab, then try again" };
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  if (halted()) return STOPPED;
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["wa-bridge.js"] });
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["whatsapp.js"], world: "MAIN" });
-  const bytes = new Uint8Array(await clip.arrayBuffer());
-  return new Promise((resolve) => {
-    const port = chrome.tabs.connect(tab.id, { name: "wastatus-wa" });
-    const timer = setTimeout(() => { resolve({ ok: false, error: "WhatsApp took too long to open its editor" }); try { port.disconnect(); } catch { /* gone */ } }, 150000);
-    port.onMessage.addListener((message) => {
-      if (!message.result) return;
-      clearTimeout(timer);
-      resolve(message.result);
-      try { port.disconnect(); } catch { /* gone */ }
-    });
-    port.onDisconnect.addListener(() => {
-      clearTimeout(timer);
-      resolve({ ok: false, error: "The WhatsApp tab was closed or reloaded. Try again" });
-    });
-    if (signal) {
-      signal.addEventListener("abort", () => {
-        clearTimeout(timer);
-        resolve(STOPPED);
-        try { port.disconnect(); } catch { /* gone */ }
-      }, { once: true });
-    }
-    port.postMessage({ cmd: "start", name, size: bytes.length, caption });
-    const SLICE = 512 * 1024;
-    for (let at = 0; at < bytes.length; at += SLICE) {
-      let text = "";
-      const slice = bytes.subarray(at, at + SLICE);
-      for (let i = 0; i < slice.length; i += 0x8000) text += String.fromCharCode.apply(null, slice.subarray(i, i + 0x8000));
-      port.postMessage({ cmd: "chunk", b64: btoa(text) });
-    }
-    port.postMessage({ cmd: "end" });
-  });
+  return result;
 }
 
 async function save() {
@@ -848,6 +809,10 @@ async function checkSettings({ server, token }) {
 const PAGE = {
   CAPTURES_PER_HOUR: 20,  // per browser, Table HP-2: a person's pace, never a crawler's
   LOADS_PER_HOUR: 10,
+  // Scheduled runs are paced on their own key, so the page's ten loads an hour can
+  // never refuse a post the person scheduled (E4). 90 s apart allows 40 an hour; this
+  // is a guard against a loop, not a limit anyone meets.
+  SCHEDULED_PER_HOUR: 40,
   OPEN_TIMEOUT: 45000,    // for YouTube to open the video in a new tab
 };
 let pageBusy = null;      // one capture at a time, whatever asks
@@ -1171,10 +1136,61 @@ async function pageLoad(op, message) {
   if (op.abort.signal.aborted) throw new PageFailure("Stopped.", "stopped");
   if (!result || !result.ok) {
     throw new PageFailure((result && result.error) || "WhatsApp did not open its editor. Try again.",
-      ((result && result.error) || "").slice(0, 60) || "whatsapp", "whatsapp");
+      (result && result.code) || "whatsapp", "whatsapp");
   }
   return { loaded: true };
 }
+
+// Schedules a finished clip: the queue's rules first, then the clip is brought down
+// into this computer's keeping with the page's clip grant, then saved (UC1).
+async function pageSchedule(op, message) {
+  let url;
+  try { url = new URL(message.url); } catch { url = null; }
+  if (!url || url.origin !== op.server || url.pathname !== "/api/v1/clip"
+      || url.searchParams.get("stem") !== String(message.stem || "")) {
+    throw new PageFailure("That clip address is not SnipShare's.", "invalid");
+  }
+  op.say({ message: "Keeping the clip on this computer", progress: 0 });
+  try {
+    return await scheduler.create(message, {
+      grant: op.grant, url: url.href, signal: op.abort.signal,
+      onProgress: (share) => op.say({ message: "Keeping the clip on this computer", progress: Math.min(1, share) }),
+    });
+  } catch (err) {
+    if (err instanceof SnipSchedule.Refusal) throw new PageFailure(err.message, err.code, "schedule");
+    throw err;
+  }
+}
+
+// The person pressed a link or a menu item, so the queue comes to the front.
+async function openQueue() {
+  const url = chrome.runtime.getURL("queue.html");
+  const [open] = await chrome.tabs.query({ url }).catch(() => []);
+  if (open) {
+    await chrome.tabs.update(open.id, { active: true });
+    await chrome.windows.update(open.windowId, { focused: true }).catch(() => {});
+    return;
+  }
+  await chrome.tabs.create({ url, active: true });
+}
+
+// Asked for by a person from the queue or a notification: WhatsApp to the front.
+async function showWhatsApp() {
+  const [tab] = await chrome.tabs.query({ url: "https://web.whatsapp.com/*" }).catch(() => []);
+  if (!tab) {
+    await chrome.tabs.create({ url: "https://web.whatsapp.com/", active: true });
+    return;
+  }
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+}
+
+const custody = SnipCustody.make({ db });
+const scheduler = SnipSchedule.make({
+  custody, place: SnipPlace, queue: SnipQueue,
+  paced: () => paced("scheduled", PAGE.SCHEDULED_PER_HOUR),
+  badge: needsYouBadge, openQueue, showWhatsApp,
+});
 
 async function pageWords(message) {
   const id = String(message.videoId || "") || (() => {
@@ -1220,8 +1236,8 @@ chrome.runtime.onConnectExternal.addListener((port) => {
         // Answered quickly whatever WhatsApp's tab is doing: the page waits on this.
         const whatsapp = await Promise.race([whatsappState().catch(() => "unknown"),
           new Promise((resolve) => setTimeout(() => resolve("unknown"), 1500))]);
-        done = { version: chrome.runtime.getManifest().version, whatsapp };
-      } else if (message.cmd === "capture" || message.cmd === "load") {
+        done = { version: chrome.runtime.getManifest().version, whatsapp, features: ["schedule"] };
+      } else if (message.cmd === "capture" || message.cmd === "load" || message.cmd === "schedule") {
         // The grant is used only against the page's own origin, whatever the
         // message says about servers.
         if (message.server && new URL(message.server).origin !== origin) {
@@ -1230,9 +1246,15 @@ chrome.runtime.onConnectExternal.addListener((port) => {
         op.grant = String(message.grant || "");
         if (!op.grant) throw new PageFailure("Sign in again.", "auth");
         done = message.cmd === "capture" ? await pageCapture(op, message, port.sender)
-          : await pageLoad(op, message);
+          : message.cmd === "load" ? await pageLoad(op, message)
+            : await pageSchedule(op, message);
       } else if (message.cmd === "words") {
         done = await pageWords(message);
+      } else if (message.cmd === "queue-peek") {
+        done = await scheduler.peek();
+      } else if (message.cmd === "open-queue") {
+        await openQueue();
+        done = { opened: true };
       } else {
         throw new PageFailure("The extension does not know that request. Update it.", "unknown");
       }
@@ -1278,11 +1300,51 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 
-// Wake up and carry on: on install, on browser start, and once a minute while a
-// clip is in flight, because Chrome may have stopped this worker in between.
-chrome.runtime.onInstalled.addListener(() => run());
-chrome.runtime.onStartup.addListener(() => run());
-chrome.alarms.onAlarm.addListener(() => run());
+// The queue page and the options page, over their own port. Only the extension's own
+// pages: a content script runs on a web page and has no business here.
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "snipshare-queue") return;
+  const sender = port.sender || {};
+  if (sender.id !== chrome.runtime.id || !String(sender.url || "").startsWith(chrome.runtime.getURL(""))) {
+    port.disconnect();
+    return;
+  }
+  scheduler.attach(port);
+});
+
+// The options page writes the scheduling settings straight to storage; the open
+// queue pages are told.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.settings) scheduler.changed().catch(() => {});
+});
+
+chrome.notifications.onClicked.addListener((id) => { scheduler.clicked(id).catch(() => {}); });
+chrome.notifications.onButtonClicked.addListener((id, index) => { scheduler.button(id, index).catch(() => {}); });
+
+// The toolbar button's own menu, beside Options: the queue (FR-3).
+function menus() {
+  chrome.contextMenus.removeAll(() => {
+    void chrome.runtime.lastError;
+    chrome.contextMenus.create({ id: "snipshare-queue", title: "Scheduled Statuses", contexts: ["action"] },
+      () => void chrome.runtime.lastError);
+  });
+}
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === "snipshare-queue") openQueue().catch(() => {});
+});
+
+// Wake up and carry on: on install, on browser start, and on every alarm, because
+// Chrome may have stopped this worker in between. Each alarm goes to its owner by
+// name: `wastatus` is the job's once a minute wake, `sched-*` the schedule's (E1). A
+// schedule alarm never drives the job loop, and a name nobody owns is ignored.
+chrome.runtime.onInstalled.addListener(() => { menus(); run(); scheduler.wake().catch(() => {}); });
+chrome.runtime.onStartup.addListener(() => { menus(); run(); scheduler.wake().catch(() => {}); });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  const name = String(alarm && alarm.name || "");
+  if (name === "wastatus") run();
+  else if (name.startsWith("sched-")) scheduler.alarm(name).catch(() => {});
+});
 getJob().then(badge);
 sweepBlobs().catch(() => {});
 run();
+scheduler.wake().catch(() => {});

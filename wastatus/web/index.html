@@ -536,6 +536,20 @@
                 the clip and the caption in place. You press Send there.</span>
             </div>
 
+            <!-- Scheduled Statuses. Hidden here and shown only by the hosted page's
+                 script, when the extension, the pilot switch and the device all
+                 allow it; the local tool never unhides it (docs/scheduling.md). -->
+            <div class="doer" id="doer-schedule" hidden>
+              <div class="schedbtns">
+                <button type="button" class="button" id="schedule" aria-controls="sched"
+                        aria-expanded="false">Schedule</button>
+                <button type="button" class="button" id="queue-add" aria-controls="sched"
+                        aria-expanded="false">Add to queue</button>
+              </div>
+              <span class="doer__what">Keeps the clip on this computer and puts it in WhatsApp
+                at the time you choose. You press Send.</span>
+            </div>
+
             <div class="doer" id="doer-send">
               <button type="button" class="button" id="send">Send it for me</button>
               <span class="doer__what">Posts it to Status (Contacts) now. Nothing
@@ -548,6 +562,49 @@
                 output folder. Two presses.</span>
             </div>
           </div>
+
+          <form class="sched" id="sched" novalidate hidden aria-labelledby="sched-title">
+            <h3 class="sched__title" id="sched-title">Schedule this Status</h3>
+            <div class="sched__field">
+              <span class="sched__label" id="sched-presets-label">When</span>
+              <div class="sched__presets" id="sched-presets" role="radiogroup"
+                   aria-labelledby="sched-presets-label"></div>
+            </div>
+            <div class="sched__field" id="sched-pick">
+              <label class="sched__label" for="sched-time">Or pick a time</label>
+              <input type="datetime-local" id="sched-time" autocomplete="off"
+                     aria-describedby="sched-words">
+            </div>
+            <p class="sched__words" id="sched-words" role="status" aria-live="polite"></p>
+            <p class="sched__warn" id="sched-warn" hidden></p>
+            <div class="sched__field">
+              <label class="sched__label" for="sched-caption">Caption</label>
+              <textarea id="sched-caption" rows="3" maxlength="1024" spellcheck="false"></textarea>
+            </div>
+            <p class="hint sched__notes">Puts it in WhatsApp for you to send. Keep Chrome open
+              and the computer awake.</p>
+            <p class="alert" id="sched-error" role="alert" hidden></p>
+            <div class="sched__progress" id="sched-progress" hidden>
+              <progress id="sched-bar" max="1" aria-labelledby="sched-progress-text"></progress>
+              <span id="sched-progress-text" role="status">Keeping the clip on this computer</span>
+            </div>
+            <div class="sched__buttons">
+              <button type="button" class="button" id="sched-cancel">Cancel</button>
+              <button type="submit" class="button button--primary" id="sched-save">Schedule it</button>
+            </div>
+          </form>
+
+          <p class="hint" id="sched-phone" hidden>Scheduling works in Chrome on a computer
+            with the extension</p>
+
+          <section class="upnext" id="upnext" aria-labelledby="upnext-title" hidden>
+            <div class="upnext__head">
+              <h3 class="upnext__title" id="upnext-title">Up next</h3>
+              <button type="button" class="button button--quiet upnext__open" id="queue-open">Scheduled</button>
+            </div>
+            <ul class="upnext__list" id="upnext-list"></ul>
+            <p class="hint" id="upnext-empty" hidden>Nothing scheduled yet.</p>
+          </section>
 
           <label class="check check--inline check--follow">
             <input type="checkbox" id="follow-up">

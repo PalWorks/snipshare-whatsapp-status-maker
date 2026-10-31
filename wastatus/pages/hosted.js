@@ -27,6 +27,9 @@ window.SnipShare = (() => {
   let extension = null;
   let checked = false;
   let quota = null;
+  // Scheduled Statuses: the pilot switch and the figures the extension enforces,
+  // as the server last said (`/api/state`). Off until it says on.
+  let scheduling = { enabled: false, pending: 30, budget_bytes: 400000000 };
   let me = { name: data.name || "", email: data.email || "", admin: data.admin === "1" };
   let current = null;        // the port of the capture or load in flight
   let lastFailure = "";      // the last failure reported, for the feedback form
@@ -107,7 +110,7 @@ window.SnipShare = (() => {
   const IDLE = 300000;
   let currentFinish = null;
 
-  function converse(message, onProgress, timeout = 0, track = false) {
+  function converse(message, onProgress, timeout = 0, track = false, watched = false) {
     return new Promise((resolve, reject) => {
       const port = connect();
       if (!port) return reject(Object.assign(new Error(
@@ -125,7 +128,7 @@ window.SnipShare = (() => {
         error ? reject(error) : resolve(value);
       };
       const hush = () => {
-        if (!track) return;
+        if (!track && !watched) return;
         clearTimeout(quiet);
         quiet = setTimeout(() => finish(Object.assign(new Error(
           "The extension stopped reporting. Reload this page and try again."),
@@ -243,6 +246,89 @@ window.SnipShare = (() => {
     }
   }
 
+  /* ── scheduling (docs/scheduling.md) ──────────────────── */
+
+  /* Whether this page may offer Schedule: the extension says it can ("schedule" in
+     its features, from 2.1.0), the server has the pilot on for this person, and
+     this is a computer. A phone gets a line saying so instead (U10). */
+  function canSchedule() {
+    return ready() && scheduling.enabled
+      && Array.isArray(extension.features) && extension.features.includes("schedule");
+  }
+
+  /* Why not, in one line, or "" when it is fine or when nothing should be said: a
+     person the pilot is off for is told nothing, since the feature is not theirs. */
+  function whyNotSchedule() {
+    if (mobile) return scheduling.enabled
+      ? "Scheduling works in Chrome on a computer with the extension" : "";
+    if (!scheduling.enabled || !ready()) return "";
+    if (!Array.isArray(extension.features) || !extension.features.includes("schedule")) {
+      return "Scheduling needs the newest SnipShare extension. Update it, then reload this page.";
+    }
+    return "";
+  }
+
+  /* Keeps the clip on this computer until its time. `when` is {due: epoch ms} or
+     {afterLast: true}. The clip is fetched by the extension with a `clip` grant, as
+     `load` does, and the answer comes after it is kept, so `onProgress` carries the
+     download ({message, progress}). The extension enforces the smaller of the limits
+     sent and its own. Action is always "prepare" in this release: nothing here, and
+     nothing the extension does for a schedule, presses Send (D-084). */
+  async function schedule(clip, caption, when, onProgress) {
+    if (!ready()) {
+      await hello();
+      if (!ready()) throw new Error(why() || "The SnipShare extension is needed for this.");
+    }
+    if (!canSchedule()) {
+      throw new Error(whyNotSchedule() || "Scheduling is not switched on for you yet.");
+    }
+    const granted = await call("/api/grant", { purpose: "clip", stem: clip.stem });
+    const message = {
+      cmd: "schedule",
+      server: granted.server,
+      grant: granted.grant,
+      url: `${granted.server}/api/v1/clip?stem=${encodeURIComponent(clip.stem)}`,
+      stem: clip.stem,
+      name: `${clip.stem}.mp4`,
+      caption,
+      mode: clip.video ? "video" : "card",
+      action: "prepare",
+      limits: { pending: scheduling.pending, budgetBytes: scheduling.budget_bytes },
+    };
+    if (when && when.afterLast) message.afterLast = true;
+    else message.due = when.due;
+    try {
+      return await converse(message, onProgress, 0, false, true);
+    } catch (error) {
+      // What the person can fix is theirs to read, not a fault to report.
+      if (!["past", "far", "limit", "budget", "quota", "gone", "network"].includes(error.code)) {
+        report("schedule", error.phase || "schedule", error.code);
+      }
+      throw error;
+    }
+  }
+
+  /* The next three, for Up next. Null when the extension cannot say; the page shows
+     nothing then rather than an error, because it is a glance, not a task. */
+  async function peek() {
+    if (!canSchedule()) return null;
+    try {
+      return await converse({ cmd: "queue-peek" }, null, 6000);
+    } catch {
+      return null;
+    }
+  }
+
+  /* The queue is an extension page, which a web page cannot open itself: the
+     extension is asked, and opens it in front because the person pressed a link. */
+  async function openQueue() {
+    if (!ready()) {
+      await hello();
+      if (!ready()) throw new Error(why() || "The SnipShare extension is needed for this.");
+    }
+    return converse({ cmd: "open-queue" }, null, 8000);
+  }
+
   async function words(url) {
     if (!ready()) await hello();
     if (!ready()) {
@@ -276,6 +362,7 @@ window.SnipShare = (() => {
   function rows(fresh) {
     if (fresh.quota) quota = fresh.quota;
     if (fresh.me) me = fresh.me;
+    if (fresh.scheduling) scheduling = fresh.scheduling;
     // The quota line and the buttons follow the state that just arrived.
     queueMicrotask(paint);
     const left = quota ? Math.max(0, quota.clips_limit - quota.clips) : null;
@@ -406,6 +493,8 @@ window.SnipShare = (() => {
 
   return {
     capture, stop, load, words, rows, ready, why, hello,
+    schedule, peek, openQueue, canSchedule, whyNotSchedule,
+    get scheduling() { return scheduling; },
     label: (stage) => STEP_LABELS[stage] || stage,
     get mobile() { return mobile; },
     get whatsapp() { return extension && extension.whatsapp; },

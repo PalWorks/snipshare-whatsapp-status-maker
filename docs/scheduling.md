@@ -10,8 +10,12 @@ time alone, each post's time edited in its own row (SC-D12). Revised again
 **2026-10-31T00:29:11+05:30**: two ways into the queue, **From the editor** (a clip
 the person made and looked at) and **From a link** (a link and instructions, the
 clip made for them), Section 1b. **Status: plan complete and reviewed (Section 14), every decision taken
-(Tables SC-9, SC-10 and SC-17, the last at 2026-10-31T00:31:42+05:30), nothing built.** The next step is
-Phase 0, on the owner's word.
+(Tables SC-9, SC-10 and SC-17, the last at 2026-10-31T00:31:42+05:30).**
+**Status, 2026-10-31T01:51:25+05:30: Release 1 is built (From the editor, Prepare only), and Phase 0 is
+pending.** Nothing in it has been tried in a real WhatsApp Web or on the owner's Chrome.
+Section 15 says what was built, what differs from this plan and why, and what is
+unverified. Releases 2 and 3 and confirmed Send are not built. The next step is Phase 0,
+on the owner's word, then a week of the owner's use.
 
 Claims about Chrome's behaviour that this repository has not measured are labelled.
 Phase 0 measures them before anything is built, as was done for the extension
@@ -999,3 +1003,57 @@ Test plan written outside the repository, in the gstack project folder, dated
   T1 to T4 as recommended. Ready for Phase 0 of Release 1 when the owner asks.
 
 NO UNRESOLVED DECISIONS
+
+
+## 15. As built, Release 1, 2026-10-31T01:51:25+05:30
+
+Section 14 overrides Sections 1 to 13 where they conflict, and this section overrides
+both where the build differs. Branch `feat/scheduling-r1`, uncommitted when this was
+written. The build contract named the modules and the commands; this describes the
+behaviour, not the lines. Decisions taken while building are D-105.
+
+**Table SC-18: what was built**
+
+| Piece | What it does |
+|---|---|
+| `src/queue.js` | pure rules, no Chrome: order by time, 90 second spacing, 2 minute minimum lead and 30 days ahead, quiet hours (a warning, never a refusal), the limits check, catch up (run if no more than 30 minutes late and outside quiet hours, else missed), resume's three choices, the next wake, Undo snapshots and the plain words and tone for each state. Also `shift` and `spread`, unused until Release 3 |
+| `src/custody.js` | fetches a scheduled clip into IndexedDB in numbered parts of at most 2 MiB (`sched:<id>:part:<n>`), one ranged request per part, resumable after the worker stops, size checked against the server's figure before anything is kept, SHA-256 kept, room for twice the clip checked, a full disk reported plainly, orphan parts swept. No tickets, no pins, no change to what the server holds |
+| `src/place.js` | the placement ladder. S0 an existing WhatsApp tab untouched, S1 a new background tab, S2 an unfocused helper window, S3 only when the person allows taking focus while idle, S4 asks by notification, S5 only when the person allows bringing WhatsApp forward. A focus guard around every rung, a discard guard, an activity guard (the person using WhatsApp, or a composer already open, means wait). `placeStats` records per machine which rung worked. `testQuiet` is the queue page's test |
+| `src/schedule.js` | the stored queue and its states, one promise chain for every change, revisions so a stale edit is refused (`conflict`), the `sched-next` alarm and a 15 minute `sched-sweep` alarm rebuilt on every wake, prewarm, waiting and retry, notifications and the badge, history, the run log, settings and limits, the commands of both ports |
+| `src/sw.js` | loads the four modules, answers the external port (`schedule`, `queue-peek`, `open-queue`, `hello` with `features`), the internal port `snipshare-queue`, the toolbar menu item, alarm dispatch by name, and the scheduled pacing key. `sweepBlobs` leaves every `sched:` key alone |
+| `src/whatsapp.js`, `src/wa-bridge.js` | the composer steps now wait on page changes rather than sleeping, return the caption read back, never press Send, and the bridge acknowledges every chunk before the next is sent |
+| `src/queue.html`, `queue.css`, `queue-page.js` | the queue page (Section 4's table): Needs you, Next up, the table with in row time and caption edits, Cancel with Undo, Pause and Resume, history, the budget, the quiet test, the run log. Mobile first |
+| `src/popup.*` | the scheduling settings, saved as each control changes, and **Open the queue** |
+| `wastatus/web/*`, `wastatus/pages/hosted.*` | **Schedule** and **Add to queue** beside **Load into WhatsApp** (which stays primary), the picker with presets and the time in words, **Up next**, the Scheduled link, and one line on a phone. Hidden in the local tool |
+| `wastatus/accounts.py`, `portal.py`, `pages/admin.js` | per person limits and the pilot switch, `scheduling` in `/api/state`, `POST /api/admin/limits`, the admin page's editor, the report source `schedule` |
+
+Every run is **Prepare**: the clip is put in WhatsApp's composer and the person presses
+Send. The `action` field exists and is always `"prepare"`; any other value is refused.
+
+**Table SC-19: where the build differs from the plan, and why**
+
+| Plan | Built | Why |
+|---|---|---|
+| T2: only what needs the person is notified, success is silent bar a daily summary | every prepared clip is notified, "in WhatsApp, press Send", with **Show WhatsApp**, and counts as Needs you on the badge | every prepared clip needs a press in this release, and an open composer blocks the next run |
+| WhatsApp's tab kept from discarding while prewarmed | and while a clip is prepared and unsent, up to 6 hours | a discarded tab destroys the unsent composer |
+| Schedule saved on one press | the same two press stale preview check as Load and Download | a preview out of step with the settings must not be scheduled unseen |
+| **Post next now** (U3) | **Prepare next now**, and the row buttons are secondary | it posts nothing; one primary button per screen |
+| Scheduled runs share the page's pacing | their own key, 40 an hour (E4) | ten loads an hour must not starve a queue |
+| Limits carried "in the page config or the account answer" | `/api/state` carries `scheduling: {enabled, pending, budget_bytes}`; the page tells the extension, which enforces them | the state answer is the one the page already reads |
+| Quiet mode Phase 0 first | built before Phase 0; the ladder's order is learned per machine from `placeStats` | the order cannot be known until it is tried on the owner's machine |
+| Sending in the plan's Phase 8 | not built | AGENTS.md Never, D-084, and the plan's own gate of a week of Prepare runs |
+| From a link and the bulk bar | not built | Releases 2 and 3 |
+
+**Table SC-20: what is unverified**
+
+| Claim | Status |
+|---|---|
+| Phase 0 on the owner's Chrome | [Unverified] not run. Every Chrome behaviour this plan labelled unverified still is: a composer in a hidden tab, a tab that has never been shown (S1), `focused: false` on Linux (S2), moving a tab between windows without WhatsApp's "Use here", and typing a caption in an unfocused tab. **Try quiet mode now (nothing is sent)** on the queue page is the owner's test |
+| Anything in real WhatsApp Web | [Unverified] nothing was run against it |
+| Resume's three choices, end to end | [Unverified] covered by unit tests only |
+| The alarm rebuild on every wake, end to end | [Unverified] covered by unit tests only |
+| The queue as a whole | verified in a headless Chromium with the real unpacked extension and a local hosted server in a scratch profile: real clips scheduled, retimed, captions edited, cancelled and undone, paused and resumed across two open queue pages, and a due schedule run with WhatsApp blocked, which failed cleanly to "signed out" with a notification and no change of focus |
+| Unit tests | 152 Node tests pass; the full pytest suite passes with 1569 passed and 7 skipped (2026-10-31T09:55:06+05:30, after the independent review's fixes) |
+
+Next: Phase 0 by the owner, then a week of the owner's use of Prepare, then confirmed
+Send (Phase 8), Release 2 and Release 3, in that order unless the owner says otherwise.
