@@ -313,11 +313,36 @@ request, so HTML, CSS and JS are live; Python is not. Restart the service.
    both modes, then with `--throttle 800 --restart-at uploading` and `--stop-at
    rendering` if the job's flow changed.
 5. In the owner's Chrome: reload the extension on `chrome://extensions`, reload the
-   YouTube tab, make a clip, **Load into WhatsApp**, and close the composer.
+   YouTube tab, make a clip, **Load into WhatsApp**, and close the composer. If the
+   change touches the queue, see "Change scheduling or the queue" above.
 6. `scripts/deploy.sh` for a renderer change (ask first, AGENTS.md), then
    `extension_check.py` against production.
 7. People who use the extension update their copy of `src/` and press reload
    on its card; say so if the change needs it.
+
+## Change scheduling or the queue
+
+Added **2026-10-31T13:12:52+05:30**, for Scheduled Statuses, Release 1.
+
+1. Read [docs/scheduling.md](docs/scheduling.md) Sections 14 and 15 (Section 14 overrides
+   the plan; Section 15 overrides both for what was built) and D-104 to D-107.
+2. Rules that need no Chrome (order, spacing, quiet hours, limits, catch-up, `afterLast`)
+   go in `src/queue.js` with a Node test in `src/test/`. The tool page's
+   `nextInQueue` in `wastatus/web/app.js` repeats `afterLast` for the time on the picker's
+   chip; change both, and keep the Node test that checks they agree.
+3. **Never add an action other than `prepare`**, and never press Send from the extension:
+   AGENTS.md Never, D-084, D-105. Confirmed Send needs the owner's word first and a week
+   of Prepare runs.
+4. A new command from the page widens what a web page may ask (SECURITY.md, Table SE-4):
+   say why in DECISIONS.md. Adding a read only field to `queue-peek` is the smaller step
+   (D-107), and it needs a new extension number in `src/manifest.json`.
+5. The queue page (`queue.html`) is also framed in the account page; check both, at 360
+   and at desktop width, and with `?embed=1`.
+6. `pytest`, `node --test src/test` (`tests/test_extension.py` runs them), then the real
+   extension in a throwaway Chrome. Quiet placement cannot be proved here: it needs
+   WhatsApp Web, which the owner tries himself (Phase 0).
+7. People update by downloading the zip and pressing reload; raise
+   `EXTENSION_MIN_VERSION` only if the page cannot work with the older one.
 
 ## Release
 

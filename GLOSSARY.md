@@ -1,6 +1,6 @@
 # Glossary
 
-Last updated **2026-10-25T15:21:02+05:30**
+Last updated **2026-10-31T13:12:52+05:30**, with the scheduling terms (before that 2026-10-25T15:21:02+05:30)
 
 The words this codebase uses, in one alphabetical list, each with where it lives in
 the code. [DOMAIN.md](DOMAIN.md) is the primary source for the domain itself: the
@@ -12,14 +12,17 @@ list gives one line and points to it rather than repeating it.
 
 | Term | Meaning | In the code |
 |---|---|---|
+| Account menu | the menu the tool page's Account chip opens: Profile, History, Scheduled Statuses (when scheduling is on), Extension, Admin (admins), Sign out (D-107) | `wastatus/pages/hosted.js` |
 | ack | the field WhatsApp Web keeps against a message it sent: below zero refused, zero no answer yet, one or more accepted, then delivered, read, played. The only evidence the tool accepts that a Status went out (D-071) | `post.confirm_sent` |
 | admin | a person whose account may approve, decline and suspend others, and see `/admin`. Set from the server's settings, not from the page | `accounts`, `portal._admin_*` |
 | alert | one Chat message per key per period, so a storm is one line. See [OBSERVABILITY.md](OBSERVABILITY.md), Table OB-4 | `Portal.alert`, `Accounts.should_alert` |
 | artwork | the video's thumbnail, the picture card mode is built from. Fetched by the local tool, captured by the extension | `fetch.download_thumbnail`, `Captured.artwork` |
 | capture | the extension's copy of the window, read from what YouTube's player appended, never fetched. DOMAIN.md, Table DO-4 | `src/recorder.js`, `src/media.js`, `pipeline.Captured` |
+| catch-up window | how late a scheduled run may still go ahead after its due time: 30 minutes, outside quiet hours. DOMAIN.md, Table DO-5 | `src/queue.js` |
 | card | the 1620x2880 PNG Pillow composes and ffmpeg animates; also short for card mode. DOMAIN.md, Table DO-3 | `compose.build_card` |
 | card mode | the default: artwork only, no video frames fetched | `Job.video = False` |
 | CDP | the Chrome DevTools Protocol, over which the local tool drives WhatsApp Web through a debug port on loopback (D-012) | `post.py` |
+| custody | where a scheduled clip waits for its run: IndexedDB on this computer, in parts of at most 2 MiB | `src/custody.js` |
 | clip | the finished 1080x1920 MP4, at most 90 seconds and under 10 MiB | `pipeline.produce` |
 | composer | WhatsApp Web's Status editor, where a clip is attached and its caption typed. **Load into WhatsApp** opens it and stops; Send is pressed by a person (D-020) | `post.load_video`, `src/whatsapp.js` |
 | debug port | the port a posting Chrome is started with (`--remote-debugging-port`). An unauthenticated control channel, so it stays on `127.0.0.1` | `post.candidate_ports` |
@@ -35,16 +38,27 @@ list gives one line and points to it rather than repeating it.
 | grant | a short lived, single purpose token the page hands the extension: `upload` for a capture, `clip` for fetching one clip. 15 minutes, renewed while in use (D-090) | `Accounts.grant` |
 | health chip | on the local page, the chip at the top right that opens the health panel: ffmpeg, token provider, WhatsApp Web, another device | `serve.py`, `wastatus/web/app.js` |
 | job | one clip being made: on the renderer `queued`, `rendering`, `done`, `failed` or `cancelled`; in the engine, the `Job` dataclass describing what to make | `hosted.Renderer`, `pipeline.Job` |
+| Needs you | the queue page's first list and the toolbar badge: prepared clips waiting for Send, and what was missed, failed, asked or signed out | `src/queue-page.js`, `src/schedule.js` |
 | ladder | the ordered list of yt-dlp player clients and formats tried until one works (D-005, D-023). The run record's `client` and `format` say which won | `fetch.STRATEGIES_*` |
 | link pill | the rounded capsule with a play triangle and `youtu.be/<id>`. DOMAIN.md, Table DO-3 | `compose.py` |
 | MSE | Media Source Extensions, the browser API YouTube's player feeds video through, which the extension hooks. DOMAIN.md, Table DO-4 | `src/recorder.js` |
+| Next in queue | the Schedule picker's first and chosen option: after the last pending post by the gap, never under 2 minutes, out of quiet hours. Sent as `afterLast: true`. DOMAIN.md, Table DO-5 | `src/queue.js` `afterLast`, `nextInQueue` in `wastatus/web/app.js` |
 | person | someone who asked for access to SnipShare: `pending`, `approved`, `declined` or `suspended` | `accounts.Person` |
+| Phase 0 | the plan's measurement of unproven Chrome behaviour before relying on it; for Release 1, the owner's own Chrome and WhatsApp test of quiet placement, [Unverified] until reported | `docs/scheduling.md` |
+| pilot switch | the per person setting that shows scheduling: off except for admins until an admin switches a person on at `/admin` | `accounts.py`, `lim_scheduling` |
+| placement ladder | the ordered rungs S0 to S5 for where WhatsApp's page sits during a scheduled run, quietest first, with the rung that worked kept per machine. DOMAIN.md, Table DO-5 | `src/place.js` |
 | player client | the client identity yt-dlp impersonates (`mweb`, `web_safari`, `android`, `tv_simply`, the default). DOMAIN.md, Table DO-2 | `fetch.py` |
 | PO token | proof of origin token; without one YouTube's media URLs answer 403. Supplied by the bgutil provider. DOMAIN.md, Table DO-2 | `potoken.py`, `scripts/setup_provider.sh` |
+| prepare | the only scheduled action built: put the clip and caption in WhatsApp's composer and stop; the person presses Send (D-084, D-105) | `src/schedule.js` |
 | popup | the extension's original interface, which takes a token the owner made. Now the extension's options page | `src/popup.*` |
+| queue | all of a browser's pending schedules in due time order, kept by the extension. Its page is `queue.html`, also framed in the account page as Scheduled Statuses | `src/schedule.js`, `src/queue.html` |
+| quiet hours | a daily stretch (default 23:00 to 07:00) in which nothing is posted unasked | `src/queue.js` |
+| quiet run | a scheduled run that finishes without changing the person's window focus or active tab | `src/place.js` |
 | renderer | the hosted service that turns an uploaded capture into a clip with the same engine as the local tool. Behind SnipShare | `wastatus/hosted.py` |
 | report | a failure the page, the extension or the renderer saw: source, phase, code, versions, never the video. Kept 30 days | `/api/report`, `Accounts.report` |
 | run record | one line of `logs/runs.jsonl` per run. See [OBSERVABILITY.md](OBSERVABILITY.md), Table OB-2 | `runlog.Run` |
+| schedule | one clip with a caption, a due time and an action, held by the extension in this browser. Not a cron job: the queue only runs while Chrome is open | `src/schedule.js` |
+| Scheduled Statuses | the product's name for the queue: the extension's queue page, also the account page's section (D-106) | `src/queue.html`, `wastatus/pages/account.js` |
 | safe zone | the bands WhatsApp draws over: the top 12 percent and the bottom 15 percent of the frame (D-014, D-016) | `compose.SAFE_TOP`, `compose.SAFE_BOTTOM` |
 | session | on SnipShare, a signed in person's cookie, 30 days, stored only as its hash | `Accounts.start_session`, `Accounts.session` |
 | session label | the posting browser's first tab, whose title names the port of this session's page (D-050) | `serve.py` |

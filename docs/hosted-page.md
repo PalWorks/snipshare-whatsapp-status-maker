@@ -91,7 +91,9 @@ the things platforms care about; the page says so as facts, not as pleas.
    YouTube or WhatsApp? What do you keep about me? I made the video and want a clip
    removed.
 6. **Footer:** Privacy, Terms, Contact (the support address), the status page, and the
-   non-affiliation line.
+   non-affiliation line. *Amended 2026-10-31T13:12:52+05:30 (D-107):* the footer's non-affiliation paragraph
+   was removed from every page on 2026-10-31; the Terms ("Not affiliated") and the home
+   page's questions keep the statement.
 
 Plus `/install`, `/privacy` and `/terms`, written plainly (the owner reviews them;
 they are not legal advice), which Google's sign-in needs before it is published.

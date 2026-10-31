@@ -1,7 +1,7 @@
 # Context map
 
 Which file to read for what. Start here. Last updated
-**2026-10-31T11:35:20+05:30**, with Scheduled Statuses in the account page and the capture fix (before that 2026-10-31T01:53:14+05:30, Scheduled Statuses Release 1; earlier: 2026-10-25T15:11:42+05:30, when the
+**2026-10-31T13:12:52+05:30**, after the sweep that brought the documents level with Release 1 live and extension 2.1.1 (before that 2026-10-31T11:35:20+05:30, Scheduled Statuses in the account page and the capture fix; before that 2026-10-31T01:53:14+05:30, Scheduled Statuses Release 1; earlier: 2026-10-25T15:11:42+05:30, when the
 documentation set was completed to the agent documentation guide
 ([agent_docs_guide.md](agent_docs_guide.md)) for publication).
 
@@ -31,7 +31,9 @@ documentation set was completed to the agent documentation guide
 | SnipShare, the full page hosted for invited people: what it is, why, and how it was built | [docs/hosted-page.md](docs/hosted-page.md), DECISIONS.md D-087 to D-093, [ARCHITECTURE.md](ARCHITECTURE.md) **SnipShare** |
 | The account page, both GIF keys, feedback, and its **Scheduled Statuses** section (the extension's queue framed) | [docs/account-page.md](docs/account-page.md) (Tables AP-8, AP-9), DECISIONS.md D-095, D-106 and D-107 (the tool page's Account menu) |
 | What was measured before the extension was built | [docs/extension-spike.md](docs/extension-spike.md) |
-| Scheduling a Status for later without taking focus: the requirement and plan, and **Section 15, what Release 1 built** (prepare only; Phase 0 pending) | [docs/scheduling.md](docs/scheduling.md), DECISIONS.md D-104, D-105 and D-107 (one Schedule button); the extension's side in [docs/extension.md](docs/extension.md), the data in [DATA_MODEL.md](DATA_MODEL.md), the permissions in [SECURITY.md](SECURITY.md) |
+| Scheduling a Status for later without taking focus: the requirement and plan, and **Section 15, what Release 1 built** (live; prepare only; Phase 0 with the owner) | [docs/scheduling.md](docs/scheduling.md), DECISIONS.md D-104, D-105 and D-107 (one Schedule button); the extension's side in [docs/extension.md](docs/extension.md), the data in [DATA_MODEL.md](DATA_MODEL.md), the permissions in [SECURITY.md](SECURITY.md), how it fits in [ARCHITECTURE.md](ARCHITECTURE.md) **Scheduled Statuses**, the terms in [DOMAIN.md](DOMAIN.md) Table DO-5 |
+| A person says their schedule did not run, or where do I switch scheduling on and set limits | [RUNBOOK.md](RUNBOOK.md), **Scheduled Statuses, the pilot** (Table RB-5), and [DEPLOYMENT.md](DEPLOYMENT.md), **Scheduled Statuses: what a deploy must keep true**; the run log is in [OBSERVABILITY.md](OBSERVABILITY.md) |
+| How do I change the queue's code | [PLAYBOOK.md](PLAYBOOK.md), **Change scheduling or the queue** |
 | How do I install the extension, or let somebody in | [README.md](README.md), **SnipShare**; approving people and tokens in [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Where does the hosted renderer run, and how do I ship to it | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | SnipShare, the extension or the renderer broke | [RUNBOOK.md](RUNBOOK.md), **SnipShare, the hosted page** |
@@ -84,17 +86,17 @@ documentation set was completed to the agent documentation guide
 | [wastatus/portal.py](wastatus/portal.py) | SnipShare: public pages, sign-in and sessions, each person's `Workspace`, grants for the extension, limits, the admin's calls, `wastatus hosted user` |
 | [wastatus/accounts.py](wastatus/accounts.py) | the people database: requests, sessions and grants as hashes, usage per day, encrypted GIF keys, failure reports, alert throttling |
 | [wastatus/signin.py](wastatus/signin.py), [wastatus/notify.py](wastatus/notify.py), [wastatus/watch.py](wastatus/watch.py) | Google's ID token and Turnstile; mail and Chat to the owner; the checks, digest, backup and tidy that run inside the container |
-| [wastatus/pages/](wastatus/pages/) | the public pages and their layout, `site.js` (sign-in, the request form), `hosted.js` (the tool page's bridge to the extension), `account.js` (the account page), `admin.js` |
+| [wastatus/pages/](wastatus/pages/) | the public pages and their layout, `site.js` (sign-in, the request form), `hosted.js` (the tool page's bridge to the extension, the Schedule picker and the Account menu, D-107), `account.js` (the account page), `admin.js` |
 | [src/](src/) | the Chrome extension: `media.js` the fragment parser, `recorder.js` the capture in the YouTube page, `bridge.js`, `sw.js` the job, `popup.*`, `whatsapp.js` and `wa-bridge.js` for the composer; Node tests in `src/test` |
 | [src/queue.js](src/queue.js), [src/custody.js](src/custody.js), [src/place.js](src/place.js), [src/schedule.js](src/schedule.js) | Scheduled Statuses, Release 1, in the worker: the queue's pure rules (order, spacing, limits, catch up, resume, words); the clip held in IndexedDB parts; the placement ladder and its per machine record; the stored queue, its alarms, notifications and ports. Plan and as built: [docs/scheduling.md](docs/scheduling.md) |
-| [src/queue.html](src/queue.html), `queue.css`, [src/queue-page.js](src/queue-page.js) | the queue page: the table of scheduled Statuses, edited in place, Undo, Pause, history, the budget and the quiet test |
+| [src/queue.html](src/queue.html), [src/queue.css](src/queue.css), [src/queue-page.js](src/queue-page.js) | the queue page: the table of scheduled Statuses, edited in place, Undo, Pause, history, the budget and the quiet test. Also framed by the account page as `queue.html?embed=1` (D-106) |
 | [deploy/](deploy/) | the hosted site's Dockerfile, its own `requirements.txt` (what the site runs, a subset of the tool's) and the Compose project (app and tunnel) |
 | [scripts/deploy.sh](scripts/deploy.sh) | ships the renderer to the production host |
 | [scripts/extension_check.py](scripts/extension_check.py) | drives the real extension's popup flow in a throwaway Chrome for Testing, end to end, optionally on a throttled connection |
 | [scripts/site_check.py](scripts/site_check.py) | SnipShare end to end on this machine: a server of its own, the extension, a throwaway Chrome |
 | [scripts/build_extension.py](scripts/build_extension.py) | the extension built for one site, its id pinned, zipped for `/install` |
 | [wastatus/label.py](wastatus/label.py) | the session label: one cached page, opened as the posting browser's first tab, whose title names the port |
-| [tests/](tests/) | pytest, offline plus an opt in end to end run. `test_scheduling_limits.py` holds the server's per person limits, and `src/test/` the Node tests of the scheduling modules and, in `capture.test.js`, of the capture's choice of YouTube tab (D-106, IN-14) |
+| [tests/](tests/) | pytest, offline plus an opt in end to end run. `test_scheduling_limits.py` holds the server's per person limits, and `src/test/` the Node tests: `queue.test.js`, `custody.test.js`, `place.test.js` and `schedule.test.js` for the scheduling modules and `capture.test.js` for the capture's choice of YouTube tab (D-106, IN-14) |
 | [scripts/setup_provider.sh](scripts/setup_provider.sh) | one time PO token provider install |
 | [scripts/setup_stickers.sh](scripts/setup_stickers.sh) | one time OpenMoji sticker library install |
 | [scripts/install_service.sh](scripts/install_service.sh) | installs the systemd user service that keeps the page running. Deliberately not installed, D-028 |

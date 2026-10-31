@@ -2,8 +2,10 @@
 
 ## Current state, stated plainly
 
-**1593 offline tests pass and 7 are skipped, and 156 Node tests pass**, counted
-2026-10-31 after commit d917694 (account section and capture fix), recorded 2026-10-31T11:35:09+05:30 (earlier, 1569 and 152 at
+**1613 offline tests pass and 7 are skipped, and 157 Node tests pass**, as reported in the
+message of commit 68da1bd (one Schedule button, D-107) on 2026-10-31 and carried here
+2026-10-31T13:13:01+05:30 without a fresh run in this documentation pass (earlier, 1593 and 156 counted after commit d917694,
+account section and capture fix, recorded 2026-10-31T11:35:09+05:30; 1569 and 152 at
 2026-10-31T09:55:06+05:30 on the Scheduled Statuses build, after the fixes from its independent review; the 1509 offline
 tests counted 2026-10-25T22:43:40+05:30, after the second security pass (D-101), whose tests are
 `TestTheSecondSecurityPass` and `TestARequestIsReadOneWay` in `tests/test_portal.py`).

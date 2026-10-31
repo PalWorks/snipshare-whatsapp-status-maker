@@ -1,6 +1,6 @@
 # Data model
 
-Last updated **2026-10-25T15:18:44+05:30**
+Last updated **2026-10-31T13:12:52+05:30** (checked against Scheduled Statuses, Release 1, and extension 2.1.1; before that 2026-10-25T15:18:44+05:30)
 
 What this project keeps, where, for how long, and how it changes shape. Read from the
 code: `wastatus/accounts.py`, `hosted.py`, `portal.py`, `watch.py`, `pipeline.py`,
@@ -226,6 +226,10 @@ has stopped resumes from what is stored. D-082.
 | `placeStats` | the per machine record of how each placement rung did, below |
 | `schedLimits` | `{pending, budgetBytes}` as the page last told the extension |
 | `settings` | gains the scheduling fields: `bringForward` false, `idleForward` false, `quietOn` true, `quietStart` `"23:00"`, `quietEnd` `"07:00"`, `gapMinutes` 180, `perPostNotices` false |
+
+`queue-peek` (extension 2.1.1) stores nothing new: its `lastDue`, `gapMinutes` and `quiet`
+are read from `sched` and the scheduling fields of `settings` at the moment of asking
+(D-107).
 
 **Table DM-8: the `job` record**
 

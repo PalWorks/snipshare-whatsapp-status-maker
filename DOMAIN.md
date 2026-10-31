@@ -98,6 +98,31 @@ The browser extension and the hosted renderer, [docs/extension.md](docs/extensio
 | grant | a short lived token the page hands the extension for one purpose: uploading a capture, or fetching one clip |
 | report | a failure the page, the extension or the renderer saw: a source, a phase, a code and versions, never the video |
 
+## Scheduling vocabulary
+
+Added **2026-10-31T13:12:52+05:30**, for Scheduled Statuses, Release 1 (live since 2026-10-31). The plan
+is [docs/scheduling.md](docs/scheduling.md) and its Table SC-1 is the source of these
+definitions; Section 15 says what was built. Sending on a schedule is not built.
+
+## Table DO-5: Terms
+
+| Term | Meaning |
+|---|---|
+| schedule | one clip, one caption, one due time and one action, held by the extension in the person's own browser |
+| queue | all of a browser's pending schedules in due time order. It lives only in the extension (SC-D2); the server holds the clip until it is fetched, not the queue |
+| due time | an instant (epoch milliseconds) shown in the browser's own time zone |
+| Next in queue | the picker's first choice: after the last pending post by the person's gap (default 180 minutes), never under a 2 minute lead, moved out of quiet hours to where they end. Sent as `afterLast: true` (D-107) |
+| action, prepare | **prepare** puts the clip and caption in WhatsApp's Status composer and stops; the person presses Send. It is the only action built; any other is refused (D-084, D-105). **send** (press Send once and confirm) is designed, not built |
+| custody | where the finished clip waits for its run. In Release 1 only **local**: IndexedDB on this computer, in parts of at most 2 MiB |
+| prewarm | a check five minutes before the due time that WhatsApp's tab is there, signed in and not discarded |
+| quiet run | a run that completes without changing which window has focus or which tab is active in the one the person is using |
+| placement, placement ladder | where the WhatsApp page is while a run drives it, tried quietest first: S0 an existing WhatsApp tab untouched, S1 a new background tab, S2 an unfocused helper window, S3 only if the person allows taking focus while idle, S4 ask by notification, S5 only if the person allows bringing WhatsApp forward. Which rung worked is kept per machine (`placeStats`) |
+| Needs you | the queue page's first list, also the toolbar badge: a prepared clip waiting for Send, and anything missed, failed, asked, signed out or unconfirmed |
+| quiet hours | a daily stretch (default 23:00 to 07:00) in which nothing is posted unasked; a warning when a time falls in it, never a refusal |
+| catch-up window | how late a run may still go ahead after a missed due time: 30 minutes, and not in quiet hours; later is `missed` |
+| pilot switch | the per person setting (`lim_scheduling`) that shows scheduling at all: off for everyone but the admins until an admin turns it on, on the admin page |
+| Phase 0 | the plan's measurement of Chrome behaviours that this repository has not measured, before depending on them. For Release 1 it is the owner's own test on his Chrome and WhatsApp Web (**Try quiet mode now (nothing is sent)** on the queue page). [Unverified] until he reports |
+
 ## Rendering vocabulary
 
 ## Table DO-3: Terms

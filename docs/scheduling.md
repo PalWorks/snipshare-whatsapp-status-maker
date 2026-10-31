@@ -17,6 +17,13 @@ Section 15 says what was built, what differs from this plan and why, and what is
 unverified. Releases 2 and 3 and confirmed Send are not built. The next step is Phase 0,
 on the owner's word, then a week of the owner's use.
 
+**Current state, 2026-10-31T13:12:52+05:30:** Release 1 is merged, pushed and live (production at 68da1bd,
+2026-10-31, as told by the owner), as a pilot switched on per person. The page now has one
+**Schedule** button; this plan's **Add to queue** wording is superseded by D-107 and the
+version numbers it names (2.1.0) by 2.1.1 (Section 15, last part). Phase 0, the owner's own
+Chrome and WhatsApp test, is in progress with him and has no result yet. Not built:
+confirmed Send, Release 2 and Release 3.
+
 Claims about Chrome's behaviour that this repository has not measured are labelled.
 Phase 0 measures them before anything is built, as was done for the extension
 ([extension-spike.md](extension-spike.md)) and for SnipShare

@@ -9,7 +9,7 @@ to the original, so people hear the snippet first and can then go to the full tr
 [![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-4285F4.svg)](src/manifest.json)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-0A9EDC.svg)](TESTING.md)
 
-Last updated **2026-10-25T15:13:17+05:30**
+Last updated **2026-10-31T13:12:52+05:30**, with Scheduled Statuses (Release 1), the account page's menu and extension 2.1.1 (before that 2026-10-25T15:13:17+05:30)
 
 ```bash
 ./wastatus.sh "https://youtu.be/A6DfGQsdz1Y" 1:10 1:25
@@ -59,7 +59,7 @@ clip looks the same whichever you choose.
 | Who reads YouTube | your machine, through `yt-dlp` | your own browser: the extension keeps what YouTube's player already loaded in your tab. The server never asks YouTube for anything |
 | Where the clip is made | your machine, with `ffmpeg` | the hosted renderer |
 | What you install | Python, ffmpeg, node, git, this repository | Google Chrome on a computer and the extension, loaded unpacked |
-| How it reaches WhatsApp | prints the clip and caption; `--load` fills WhatsApp Web's Status composer in a Chrome you are signed into; `--post` also sends | **Load into WhatsApp** fills the composer in your own WhatsApp Web, and you press Send |
+| How it reaches WhatsApp | prints the clip and caption; `--load` fills WhatsApp Web's Status composer in a Chrome you are signed into; `--post` also sends | **Load into WhatsApp** fills the composer in your own WhatsApp Web, and you press Send. **Schedule** does the same at a time you choose, for people the owner has switched scheduling on for |
 | Start here | [Installation](#installation), or [LOCAL_SETUP.md](LOCAL_SETUP.md) line by line | [Use the hosted site](#use-the-hosted-site) |
 
 **What you get:** one Status, the clip, captioned with the link. WhatsApp makes that
@@ -78,11 +78,15 @@ tab you are already signed into, over the Chrome DevTools Protocol.
   ours. Every clip carries the link back to the upload, which is the point of it, but
   what you may do with the result is between you and the uploader.
 - **Keep YouTube's and WhatsApp's terms.** This is a tool for a person sharing a
-  moment they like, at a person's pace. It is not for bulk, scheduled or unattended
-  posting, and the hosted site has daily limits that keep it that way.
+  moment they like, at a person's pace. It is not for bulk or unattended posting, and
+  the hosted site has daily limits that keep it that way. **Scheduled Statuses** (a
+  pilot, switched on per person) only have the clip waiting in WhatsApp's composer at
+  the time you chose; you still press Send, so nothing is posted unattended.
 - **It never posts by itself.** The default everywhere is to load the composer and
   stop. The local tool sends only on `--post` or the page's explicit Send button; the
-  extension never presses Send at all ([DECISIONS.md](DECISIONS.md) D-020, D-084).
+  extension never presses Send at all, including for a scheduled clip
+  ([DECISIONS.md](DECISIONS.md) D-020, D-084, D-105). Sending on a schedule, with a
+  confirmation, is designed but not built ([docs/scheduling.md](docs/scheduling.md)).
 - **Protected (DRM) video cannot be clipped.** Encrypted media cannot be read. The
   extension does not yet say so before it tries ([LIMITATIONS.md](LIMITATIONS.md)).
 - It is not a downloader: it reads only the window you choose, at most 90 seconds,
@@ -151,7 +155,26 @@ job is done.
   slow and resume from what the renderer already holds; downloads resume too. If
   Chrome stops the extension's worker part way, the page offers to try again, which
   costs a read of the video, never a clip.
-- An admin page for requests, people, usage and failure reports.
+- An admin page for requests, people, usage and failure reports, and, per person, the
+  scheduling pilot switch and limits.
+- **Scheduled Statuses (a pilot, Release 1, live since 2026-10-31).** On a finished
+  clip, **Schedule** opens a picker that starts on **Next in queue** (with the time it
+  will land, such as "Next in queue · Sat 6:00 PM"), then In one hour, This evening,
+  Tomorrow morning and a date and time. The extension keeps the clip on your own
+  computer and, at the time, puts it and its caption in WhatsApp's Status composer
+  without taking focus where Chrome allows, and notifies you; **you press Send**. The
+  queue, one table sorted by time, is the extension's own page and also sits in the
+  account page under **Scheduled Statuses**: change a time or caption in its row,
+  cancel with Undo, pause, and see what needs you. It runs only while Chrome is open
+  and the computer awake. It is off for everyone but the admins until an admin
+  switches a person on. Not built yet: confirmed Send, **From a link** (Release 2)
+  and the bulk bar (Release 3). [Unverified] whether a quiet placement works on a
+  given machine: the owner's own Chrome and WhatsApp test (Phase 0) is in progress,
+  and until it is done the extension asks by notification when no quiet way works.
+  Design and as built: [docs/scheduling.md](docs/scheduling.md).
+- The tool page's **Account** chip opens a menu: Profile, History, Scheduled
+  Statuses (when scheduling is on), Extension, Admin (admins) and Sign out
+  ([docs/account-page.md](docs/account-page.md)).
 
 ## Architecture
 
@@ -254,6 +277,15 @@ for a Mac and a fresh Linux machine.
    unpacked**. It cannot be on the Chrome Web Store, whose policy does not allow
    downloading streaming media.
 3. **Sign in with Google**, or press the extension's button, which opens the site.
+
+The site currently offers extension **2.1.1** (`src/manifest.json`); the site
+accepts 2.0.0 and newer for making clips, and **Scheduled Statuses needs 2.1.0 or
+newer** (2.1.1 adds the time on **Next in queue**; an older one still schedules and
+shows the words "After your last scheduled post"). `chrome://extensions` shows the
+version on the extension's card, and the account page's **Extension** item opens the
+download. 2.1.0 added four permissions for Scheduled Statuses (`notifications`,
+`idle`, `unlimitedStorage`, `contextMenus`); the reasons are in
+[SECURITY.md](SECURITY.md).
 
 To update, download the zip again, replace the folder's contents and press the reload
 arrow on the extension's card.
@@ -440,6 +472,12 @@ rather than moved (D-024).
 3. **Load into WhatsApp** puts it into WhatsApp Web's Status composer with the link
    as its caption. Look, and press Send.
 
+To post later instead, press **Schedule** and pick a time (it starts on **Next in
+queue**); the clip waits on your computer and is put in WhatsApp's composer at the
+time, ready for you to send. **Scheduled Statuses** in the Account menu shows the
+queue. Scheduling appears only for people an admin has switched it on for, and only
+when the extension is 2.1.0 or newer.
+
 Making a clip needs Google Chrome on a computer; on a phone the site shows the clips
 you made, to watch and save. Design, limits and what is watched:
 [docs/hosted-page.md](docs/hosted-page.md); the extension's side:
@@ -566,7 +604,8 @@ wastatus/
   notify.py      mail and Chat to the operator
   watch.py       the hosted site's checks, daily digest, backup and tidy
   pages/         the hosted site's public pages, account and admin pages
-src/             the Chrome extension: capture, upload, load WhatsApp; Node tests
+src/             the Chrome extension: capture, upload, load WhatsApp; the scheduled
+                 queue (queue.js, custody.js, place.js, schedule.js, queue.html); Node tests
 deploy/          Dockerfile, Compose project (app and tunnel), the image's requirements
 scripts/         setup, deploy.sh, build_extension.py, extension_check.py, site_check.py
 tests/           pytest, offline plus an opt in end to end run
@@ -586,7 +625,8 @@ index is in [CONTEXT_MAP.md](CONTEXT_MAP.md) Table CM-2.
 WASTATUS_E2E=1 .venv/bin/python -m pytest tests/test_smoke.py   # real run, opt in
 ```
 
-The offline suite, about 1,470 tests on 2026-10-25, covers timestamp parsing,
+The offline suite, 1,613 pytest tests (7 skipped) and 157 Node tests when last counted
+on 2026-10-31 (the commit that added the one Schedule button), covers timestamp parsing,
 transliteration, naming, retention, logging, the bands WhatsApp's own interface
 occupies, the size budget, the posting driver, the local page's server and its
 guards, the hosted renderer and site, the capture cut, and the extension's parser,
@@ -633,6 +673,7 @@ own published changes.
 | 2b | The full page, hosted for invited people | done, as the hosted site |
 | 3 | Post to WhatsApp Status directly | done on the desktop, by driving WhatsApp Web |
 | 4 | Capture the current video from the browser | done, as part of phase 2 |
+| 5 | Scheduled Statuses: put a clip in WhatsApp at a chosen time | **Release 1 live** (prepare only, from the editor, pilot). Next: the owner's Phase 0 test, a week of use, then confirmed Send, Release 2 (from a link), Release 3 (the bulk bar) |
 
 Next, each the maintainer's call: the extension naming protected video before it
 tries, product analytics once there are enough people, the Chrome Web Store if its
@@ -682,7 +723,7 @@ around YouTube protections. Detail in [ROADMAP.md](ROADMAP.md); known gaps in
 | [MEMORY.md](MEMORY.md), [LIMITATIONS.md](LIMITATIONS.md) | assumptions, known gaps and edge cases |
 | [ROADMAP.md](ROADMAP.md), [TASKS.md](TASKS.md), [CHANGELOG.md](CHANGELOG.md) | where it is going, what is next, what changed |
 | [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_STYLE.md](CODE_STYLE.md) | how to contribute, and the conventions |
-| [docs/](docs/) | deep dives: [extraction](docs/extraction.md), [the extension](docs/extension.md), [the hosted page](docs/hosted-page.md), [the account page](docs/account-page.md), [hosting](docs/hosting.md), [Instagram](docs/instagram.md) |
+| [docs/](docs/) | deep dives: [extraction](docs/extraction.md), [the extension](docs/extension.md), [the hosted page](docs/hosted-page.md), [the account page](docs/account-page.md), [scheduling](docs/scheduling.md), [hosting](docs/hosting.md), [Instagram](docs/instagram.md) |
 
 ## Contributing
 

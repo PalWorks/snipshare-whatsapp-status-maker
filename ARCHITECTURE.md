@@ -5,7 +5,9 @@ and site for the browser extension. Locally there is no database and no state th
 survives a run apart from the output files and the PO token provider it starts; the
 hosted site keeps one SQLite database of people, sessions and counts
 ([DATA_MODEL.md](DATA_MODEL.md)). Every endpoint is in [API.md](API.md). Updated
-**2026-10-25T15:11:42+05:30** for the audit before publication (D-100).
+**2026-10-25T15:11:42+05:30** for the audit before publication (D-100). Updated
+**2026-10-31T13:12:52+05:30** for Scheduled Statuses, Release 1: the extension's queue modules, the queue
+page and its embed in the account page (section "Scheduled Statuses" below).
 
 Three front ends, one engine. `cli` parses arguments and prints; `serve` answers a
 browser; `hosted` answers the extension; all three call `pipeline.produce`, which is
@@ -19,10 +21,11 @@ viewer's own browser and uploads it; `pipeline.Captured` hands those uploads to
 `download` stage instead. Everything after that is the same code the local tool runs.
 See [docs/extension.md](docs/extension.md) and the section below.
 
-About 9,800 lines of Python across twenty three modules, 5,400 lines of page (html,
-css and vanilla js, no build step), 2,400 lines of extension (the same, no build
-step), and 10,600 lines of tests, orchestrating two external binaries: `yt-dlp` and
-`ffmpeg`. Counted on 2026-10-24.
+About 13,500 lines of Python across twenty nine modules, 10,300 lines of page (html,
+css and vanilla js, no build step), 7,800 lines of extension (js, html and css, the same,
+no build step) and 15,600 lines of tests (12,900 pytest, 2,700 Node), orchestrating two
+external binaries: `yt-dlp` and `ffmpeg`. Counted with `wc -l` on 2026-10-31; the
+earlier figures, counted on 2026-10-24, were 9,800, 5,400, 2,400 and 10,600.
 
 ## Pipeline
 
@@ -110,7 +113,7 @@ cannot. Names, never values, so a key cannot arrive there by accident.
 | `label` | the cached html tab whose title names this session's ports, profile and output folder | one file per page port, written before the browser opens and outliving the server, see T-037 |
 | `capture` | checking an upload from the extension (one stream, an allowed codec, packets that cover the window without a hole) and cutting the window on its own timestamps | decodes nothing to check it, and is the only place a capture is cut, see D-080 |
 | `hosted` | the renderer the extension talks to: tokens, chunked uploads, the job queue, its workers and janitor, serving the clip in ranges | no pipeline logic of its own, and no conversation with YouTube, see D-081 and D-082 |
-| `src/` | capturing in the YouTube tab (`recorder.js`, `media.js`), the job from upload to download (`sw.js`), the popup, and loading WhatsApp's composer (`whatsapp.js`) | JavaScript, no build step. The fragment parser lives only here; the server receives clean files and checks them with ffprobe, see D-083 |
+| `src/` | capturing in the YouTube tab (`recorder.js`, `media.js`), the job from upload to download (`sw.js`), the popup, loading WhatsApp's composer (`whatsapp.js`), and, since 2026-10-31, the scheduled queue (`queue.js`, `custody.js`, `place.js`, `schedule.js`, and the queue page `queue.html`, `queue-page.js`). The queue modules are pure rules (`queue.js`) or own one thing each; no module presses Send | JavaScript, no build step. The fragment parser lives only here; the server receives clean files and checks them with ffprobe, see D-083 |
 
 ## The local page
 
@@ -348,6 +351,51 @@ state the next step can carry on from. D-082.
 signed-in person's, for the extension to load into WhatsApp, behind a grant that
 names that clip. A grant for uploads (below) reaches `/uploads` and nothing else.
 
+## Scheduled Statuses
+
+Added **2026-10-31T13:12:52+05:30**, Release 1, live since 2026-10-31 (D-104 to D-107). The plan and as
+built are in [docs/scheduling.md](docs/scheduling.md) (Section 15); the extension's side is
+[docs/extension.md](docs/extension.md), Tables EX-5 to EX-7. **The queue lives in the
+person's extension, not on the server**, so a closed browser runs nothing and a server
+restart loses nothing.
+
+```
+the tool page (hosted.js, app.js)         the extension                      WhatsApp Web
+---------------------------------         -------------                      ------------
+Schedule picker  ---- external port --->  sw.js: `schedule`
+  "Next in queue" time from `queue-peek`    queue.js rules: spacing, lead, limits
+  (lastDue, gapMinutes, quiet)              custody.js: fetch the clip with the clip
+                                            grant into IndexedDB, in 2 MiB parts
+                                            schedule.js: store it, set alarms
+                                          alarm `sched-next`: prewarm, then at the lead time
+                                            place.js: walk the ladder S0..S5 (focus guard)
+                                            whatsapp.js / wa-bridge.js: fill the composer ----> composer
+                                            notify "in WhatsApp, press Send"                    person presses Send
+the account page (account.js)
+  Scheduled Statuses: frame queue.html?embed=1  <---- internal port `snipshare-queue` ---- queue-page.js
+```
+
+- **Two ports, two trusts.** The page reaches the extension over the external port
+  (`schedule`, `queue-peek`, `open-queue`, `hello`), only from the site's own origin.
+  The queue page, framed or in its own tab, edits the queue over the internal port,
+  which accepts the extension's own pages only (SECURITY.md, Table SE-4 and the text
+  after it).
+- **One queue UI.** The account page frames the extension's `queue.html` rather than
+  drawing a second table (D-106); an embed refuses to draw or connect unless its
+  ancestor is the site, the build exposes the four queue files to the site alone, and
+  the account page's `frame-src` names the extension's pinned id. Messages across the
+  frame are Table AP-9 in [docs/account-page.md](docs/account-page.md).
+- **The server's part is small.** It issues the clip grant, enforces the daily limits,
+  keeps each person's pilot switch and limits (`accounts.py`, `POST /api/admin/limits`)
+  and tells the page `scheduling {enabled, pending, budget_bytes}` in `/api/state`. It
+  holds no schedule, no ticket and no pin (the plan's tickets were struck, Section 14).
+- **State.** Everything the queue keeps is in `chrome.storage.local` and IndexedDB
+  ([DATA_MODEL.md](DATA_MODEL.md), Tables DM-7, DM-9 and DM-11); the run log is
+  [OBSERVABILITY.md](OBSERVABILITY.md), Table OB-10.
+- **What is not built:** confirmed Send, **From a link** (Release 2), the bulk bar
+  (Release 3) and server held custody. [Unverified] on any real machine: the quiet
+  placements, until the owner's Phase 0.
+
 ## SnipShare: the page, hosted per person
 
 ```
@@ -404,6 +452,7 @@ them again on its own thread. The OpenMoji library is shared.
 | `POST /api/feedback` | a session | `{kind, subject, message}` required, `name`, `code`, `versions` and up to three `attachments` optional: mailed to the operator with the person as the reply-to |
 | `POST /api/account/sessions/end` | a session | sign out one other browser, or every other |
 | `GET /api/admin`, `POST /api/admin/decide`, `/add`, `/forget` | an admin's session | the admin page |
+| `POST /api/admin/limits` | an admin's session | one person's limits and the scheduling pilot switch (added with Scheduled Statuses; [API.md](API.md)) |
 
 ## External dependencies
 

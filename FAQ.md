@@ -1,6 +1,6 @@
 # FAQ
 
-Last updated **2026-10-25T15:21:02+05:30**
+Last updated **2026-10-31T13:12:52+05:30**, with Scheduled Statuses (before that 2026-10-25T15:21:02+05:30)
 
 Short answers to the questions people actually ask, with a pointer to the document
 that has the whole answer. The first part is for people using SnipShare or the local
@@ -26,7 +26,9 @@ help: a single press in a window that is already open. **Load into WhatsApp** op
 your Status composer with the clip and caption in place and stops there, so you see
 exactly what will go out (D-020). On the local tool, `--post` can press Send for you,
 but it is off by default and only sends when asked for explicitly; the hosted site
-never does (D-090).
+never does (D-090). A clip you **Schedule** is the same: at its time the extension
+puts it in the composer and you press Send (D-105). Sending on a schedule is designed
+but not built, and needs the owner's say so first.
 
 ### Why is the link in my caption not tappable?
 
@@ -58,10 +60,34 @@ limit (`WASTATUS_CLIPS_PER_DAY`); the hourly cap is 60 renders by default.
 
 ### The page says the extension is not answering, or is an old version
 
-Load the current zip from `/install`, replace the folder's contents, and press reload
-on the extension's card in `chrome://extensions`. If a YouTube tab was open before
+Load the current zip from `/install` (it is version 2.1.1 now; 2.0.0 is the oldest
+the site accepts for making clips, and scheduling needs 2.1.0 or newer), replace the
+folder's contents, and press reload on the extension's card in `chrome://extensions`. If a YouTube tab was open before
 the extension was installed or updated, reload it once. [RUNBOOK.md](RUNBOOK.md),
 Tables RB-3 and RB-4.
+
+### Can I schedule a Status for later?
+
+If an admin has switched scheduling on for you (it is a pilot, off by default), yes:
+press **Schedule** on a finished clip, keep **Next in queue** or pick a time. The
+extension keeps the clip on your own computer and, at the time, puts it in WhatsApp's
+Status composer and notifies you; you press Send. It works only while Chrome is open
+and the computer awake, and WhatsApp Web must be signed in. If you do not see
+**Schedule**, the switch is off or the extension is older than 2.1.0. **Scheduled
+Statuses** in the Account menu shows the queue. The design, and what is not built
+(confirmed Send, scheduling from a link, the bulk bar), is
+[docs/scheduling.md](docs/scheduling.md).
+
+### My scheduled clip did not appear in WhatsApp, or the queue says Needs you
+
+Open **Scheduled Statuses**. **Needs you** lists what wants a press: a clip that is
+ready in WhatsApp for you to send, a run that was missed (it may go ahead if no more
+than 30 minutes late and outside quiet hours, which default to 23:00 to 07:00),
+WhatsApp being signed out, or a notification asking you to choose because no quiet
+way worked on this computer. A clip waiting unsent in the composer blocks the next
+run until you send or close it. **Try quiet mode now (nothing is sent)** and the **Run
+log** on the queue page say what happened and which way of reaching WhatsApp worked.
+[RUNBOOK.md](RUNBOOK.md), **Scheduled Statuses**.
 
 ### The capture says YouTube stopped sending the video
 
@@ -75,6 +101,13 @@ refusal as a failure rather than a success (D-071). Delete it in the browser and
 again; if the same file is refused twice, make the clip afresh. If the tool says the
 Status is **unconfirmed**, it may still go out: check its views before posting again,
 so you do not post it twice.
+
+### The capture sits at "Getting the video"
+
+Fixed in extension 2.1.0 (IN-14): a YouTube tab opened before the extension was
+installed or reloaded cannot answer, and the extension now opens its own tab instead of
+waiting on it. Update the extension; on an older one, reload the YouTube tab.
+[INCIDENTS.md](INCIDENTS.md) IN-14.
 
 ### The composer never opens for my clip
 

@@ -349,6 +349,14 @@ There is no `background` permission. Host permissions are unchanged.
   a web page is disconnected, so a web page cannot edit, cancel or run a schedule.
 - Every change names the revision it was made against; a stale one is refused.
 
+**Extension 2.1.1, added 2026-10-31T13:12:52+05:30 (D-107).** `queue-peek` also returns `lastDue`, `gapMinutes`
+and `quiet` (quiet hours on, start, end), read only, so the tool page can name the time on
+**Next in queue**. They are the person's own scheduling settings, so the site's page,
+which the external port admits from its own origin only, can now read them; no caption,
+clip name or secret is among them, and no new command exists. The rejected alternative,
+the extension answering with a finished time, would have widened what a page may ask
+(DECISIONS.md D-107).
+
 **The grant during a fetch.** A scheduled clip is fetched with the same short lived
 `clip` grant as Load. While the fetch runs the worker keeps the grant in
 `chrome.storage.session`, so a worker Chrome stopped can carry on from the parts already

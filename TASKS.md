@@ -25,7 +25,7 @@ row needs more, the task below has it.
 
 | Task | Priority | Status | In one line | Waiting on |
 |---|---|---|---|---|
-| [T-073](#t-073-open-scheduled-statuses-release-1-awaiting-phase-0) Scheduled Statuses, Release 1 | P1 | **built, awaiting Phase 0** | prepare only, from the editor: a queue page, clips held on the computer, a quiet placement ladder, per person limits. Nothing tried in a real WhatsApp Web yet | the owner: Phase 0 on his Chrome (**Try quiet mode now (nothing is sent)**), then a week of use. Release 1 plus the account section are being merged, pushed and deployed on the owner's instruction of 2026-10-31 (updated 2026-10-31T11:35:20+05:30) |
+| [T-073](#t-073-open-scheduled-statuses-release-1-awaiting-phase-0) Scheduled Statuses, Release 1 | P1 | **live (pilot), Phase 0 in progress** | prepare only, from the editor: one **Schedule** button, a queue page also in the account page, clips held on the computer, a quiet placement ladder, per person limits. Nothing tried in a real WhatsApp Web yet | the owner: Phase 0 on his Chrome (**Try quiet mode now (nothing is sent)**), in progress with no result yet, then a week of use. Release 1, the account section and the D-107 changes are live, production at 68da1bd (updated 2026-10-31T13:12:52+05:30) |
 | [T-033](#t-033-open-instagram-as-a-second-source) Instagram as a second source | P2 | open | researched on 2026-08-22 and the ground is not level: your own posts have an official route, other people's have none. yt-dlp is the only mechanism that takes a pasted link, and anonymous extraction is dead today | the owner, on Table T33-2 |
 | [T-024](#t-024-p2-a-way-to-reach-a-gif-from-chrome) A way to reach a GIF from Chrome | P2 | **parked** | Chrome on Android refuses keyboard GIFs on any phone, so the GIF step is done in Firefox, which is route A and costs nothing | a phone on the cable, to settle whether route B works. Nothing to decide |
 | [T-021](#t-021-p1-find-out-why-a-clip-sometimes-crawls-to-the-phone) Why a clip sometimes crawls to the phone | P1 | **parked** | 1 to 2 seconds on some attempts, 10 to 15 minutes on others, Tailscale on throughout | the owner, when it next bites. The test is now to watch `tailscale status` for `direct` or `relay` |
@@ -129,6 +129,16 @@ was built; decisions D-104 and D-105.
 - [ ] A scheduled clip prepared in a real WhatsApp Web, by the owner
 - [ ] Resume's three choices and the alarm rebuild on every wake, end to end
 - [ ] A week of the owner's use of Prepare
+
+- [x] Added 2026-10-31T13:12:52+05:30: merged to main, pushed and deployed, production at 68da1bd (as told
+  by the owner on 2026-10-31); the site offers extension 2.1.1
+- [ ] Phase 0 is in progress with the owner and has no result yet; a week of Prepare
+  runs has not begun
+
+**Current state, 2026-10-31T13:12:52+05:30:** Release 1 is live as a pilot, off for everyone but the admins
+until switched on at `/admin`. Not built: confirmed Send, **From a link** (Release 2) and
+the bulk bar (Release 3). Operator notes: [RUNBOOK.md](RUNBOOK.md), **Scheduled Statuses,
+the pilot**.
 
 **Next, in order:** Phase 0 by the owner; then confirmed Send (Phase 8, which needs the
 owner's word and amends nothing until then, AGENTS.md Never, D-084); then Release 2

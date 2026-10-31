@@ -13,6 +13,13 @@ have process limits, and every page links to the source (D-099, D-100).
 Updated **2026-10-26T01:29:37+05:30**: the project's containers reach the public internet and nothing
 else, by host firewall rules that `deploy.sh` installs (D-102).
 
+Updated **2026-10-31T13:12:52+05:30**: production runs the revision of 2026-10-31 that adds Scheduled
+Statuses (68da1bd, deployed, as told by the owner and not re-checked from the host in this
+pass; `scripts/deploy.sh --check` prints the revision actually running). The site offers
+extension **2.1.1** at `/download/snipshare-extension.zip`, and `EXTENSION_MIN_VERSION`
+in `wastatus/portal.py` is 2.0.0. See "Scheduled Statuses: what a deploy must keep true"
+below.
+
 This is the generic recipe. The real values (the site's address, the host, the
 accounts and keys) are in the owner's private operations notes and in the host's
 `.env`, never in this repository, which is kept fit to publish
@@ -80,6 +87,40 @@ and made admin at start, whoever is taken off stops being one.
 
 The popup's tokens still work, for the owner's own tests:
 `docker compose exec app python -m wastatus hosted token add NAME`.
+
+## Scheduled Statuses: what a deploy must keep true
+
+Added **2026-10-31T13:12:52+05:30**. Scheduling needs no new setting, container or volume: the queue
+lives in each person's extension, and the server only issues the clip grant, enforces
+the daily limits and tells the page the person's figures (`scheduling` in `/api/state`
+and `/api/account`).
+
+- **The pilot switch and per person limits** are in the people database
+  (`lim_scheduling`, `lim_pending`, `lim_budget`, [DATA_MODEL.md](DATA_MODEL.md)) and
+  are set on `/admin`, a person's row menu, **Limits and scheduling**, or by
+  `POST /api/admin/limits` ([API.md](API.md)). Scheduling is off for everyone but the
+  admins until switched on. The columns are added by the migration at start, and a
+  revision from before it ignores them, so the rollback note below covers it
+  [Unverified: not exercised as a rollback].
+- **The extension id must be the pinned one.** The account page's `frame-src` names
+  `chrome-extension://<WASTATUS_EXTENSION_ID>` when the id has Chrome's shape, and the
+  built extension exposes `queue.html` and its three files to the site's origin alone
+  (`scripts/build_extension.py` writes both from the same site and key). A deploy built
+  for another site or key leaves **Scheduled Statuses** in the account page unable to
+  frame the queue; it then offers **Open the queue in its own tab**
+  ([docs/account-page.md](docs/account-page.md), Tables AP-8 and AP-9).
+- **A new extension number means a new zip in the image.** `deploy.sh` builds the zip
+  from `src/manifest.json`'s version; people update by downloading it again and pressing
+  reload. Raise `EXTENSION_MIN_VERSION` only when the page cannot work with an older
+  extension; it stayed 2.0.0 for 2.1.0 and 2.1.1 so nobody is forced to update, and an
+  older extension simply shows no Schedule button (before 2.1.0) or no time on the
+  chip (2.1.0).
+- **Nothing scheduled is stored on the server**, so a deploy, a restart or a rollback
+  cannot lose a queue; a clip held in someone's browser is fetched from the server only
+  at scheduling time (the person's clip must still be there then). Backups of the people
+  database carry the switch and limits, not queues.
+- **Running problems** (a person's schedule did not run, where the run log is) are in
+  [RUNBOOK.md](RUNBOOK.md), **Scheduled Statuses, the pilot**.
 
 ## One time setup
 

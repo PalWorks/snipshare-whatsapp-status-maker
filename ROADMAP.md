@@ -1,11 +1,12 @@
 # Roadmap
 
 Direction and intent, so changes do not pull against where this is going.
-Concrete next actions are in [TASKS.md](TASKS.md).
+Concrete next actions are in [TASKS.md](TASKS.md). Last updated **2026-10-31T13:12:52+05:30**, with the
+state of Scheduled Statuses (Release 1 live, Phase 0 with the owner).
 
 ## Shape of the plan
 
-Four phases, agreed with the owner. Each is usable on its own. All four are done, phase 2 in a different shape from the one first agreed.
+Four phases, agreed with the owner. Each is usable on its own. All four are done, phase 2 in a different shape from the one first agreed. A fifth, Scheduled Statuses, is Release 1 live and the rest planned: its row in Table RD-1 below and [docs/scheduling.md](docs/scheduling.md).
 
 | Phase | Goal | Status |
 |---|---|---|
@@ -24,7 +25,7 @@ Added **2026-10-25T15:11:42+05:30**, when the repository went public (D-099).
 |---|---|---|
 | A way to make a clip with no extension, from the website alone | Chrome's "share this tab" prompt records the YouTube tab the person picks; the clip then comes back as a download, or on an Android phone through the browser's Share button, where WhatsApp offers My status. A site cannot read another site's player or script WhatsApp Web, so the extension's two jobs have no direct equivalent | recording runs in real time and is a re-encoded screen capture rather than YouTube's own stream; the prompt appears every time; protected video records as black. [Unverified] that Share from a web page reaches My status: to be tested on a real phone before anything is built |
 | Warn before trying a protected (DRM) video | the check deferred in Table HP-1 | a little extension code, once there are a few people |
-| Scheduled Statuses from the extension, run without taking focus, today's tab model as fallback (added 2026-10-31T00:03:18+05:30) | [docs/scheduling.md](docs/scheduling.md): Phase 0 spike, then schedules, custody of the clip, a quiet placement ladder, fallback, page UI, and confirmed send only if the owner allows it | three releases: about 15, 5 and 2 days [Inference]; reviewed and approved 2026-10-31T00:45:04+05:30 (D-104, docs/scheduling.md Section 14). **Release 1 built 2026-10-31T01:53:14+05:30** (prepare only, from the editor, D-105, Section 15): awaiting Phase 0 on the owner's Chrome and a week of the owner's use. **Added 2026-10-31T11:35:20+05:30:** the account page's Scheduled Statuses section (one queue UI by framing the extension's queue page, D-106) and the capture fix (IN-14) are in the same release, which the owner instructed on 2026-10-31 to be merged to main, pushed and deployed (in progress when written; Phase 0 not yet run). Next: Phase 0 by the owner, then confirmed Send (Phase 8), Release 2 (from a link), Release 3 (the bulk bar) |
+| Scheduled Statuses from the extension, run without taking focus, today's tab model as fallback (added 2026-10-31T00:03:18+05:30) | [docs/scheduling.md](docs/scheduling.md): Phase 0 spike, then schedules, custody of the clip, a quiet placement ladder, fallback, page UI, and confirmed send only if the owner allows it | three releases: about 15, 5 and 2 days [Inference]; reviewed and approved 2026-10-31T00:45:04+05:30 (D-104, docs/scheduling.md Section 14). **Release 1 built 2026-10-31T01:53:14+05:30** (prepare only, from the editor, D-105, Section 15): awaiting Phase 0 on the owner's Chrome and a week of the owner's use. **Added 2026-10-31T11:35:20+05:30:** the account page's Scheduled Statuses section (one queue UI by framing the extension's queue page, D-106) and the capture fix (IN-14) are in the same release, which the owner instructed on 2026-10-31 to be merged to main, pushed and deployed (in progress when written; Phase 0 not yet run). Next: Phase 0 by the owner, then confirmed Send (Phase 8), Release 2 (from a link), Release 3 (the bulk bar). **Updated 2026-10-31T13:12:52+05:30, current state:** Release 1 and the account section are merged, pushed and live (production at 68da1bd, 2026-10-31); the owner's review of production changed the page to one **Schedule** button, an Account menu and extension 2.1.1 (D-107; `EXTENSION_MIN_VERSION` 2.0.0). Phase 0, the owner's own Chrome and WhatsApp test of quiet placement, is in progress with him and has no result yet. The order from here: Phase 0 result, then about a week of the owner's use of Prepare runs, then confirmed Send (needs his word first), then Release 2, then Release 3. Not built: confirmed Send, From a link, the bulk bar |
 | A standard commercial licence | a price list and a short agreement, once enquiries arrive | the owner's time |
 
 ## Phase 1: the local tool (done)

@@ -65,6 +65,7 @@ upload resumes from what the renderer holds.
 | The connection kept dropping | eight failures in a row on one step | Try again; nothing already sent is sent twice |
 | The renderer no longer has this clip | it expired (an hour), or the renderer was rebuilt | Try again sends the stored files afresh |
 | The renderer restarted before this clip was finished | a deploy or a crash while it rendered | Try again |
+| The page sits at "Getting the video" | before 2.1.0, a YouTube tab open from before the extension was installed or reloaded could not answer and was waited on (IN-14) | update to 2.1.1 from `/install`; on an older one, reload the YouTube tab. See [INCIDENTS.md](INCIDENTS.md) IN-14 |
 | WhatsApp Web is not signed in | the QR code is waiting in that tab | scan it, then Load into WhatsApp again |
 | A Status is already open in WhatsApp | a composer from before is still open | close it or send it, then try again |
 | WhatsApp has moved its "Photos & videos" choice | WhatsApp renamed a control | the lists at the top of `wastatus/post.py` and in `src/whatsapp.js`; a test keeps them equal |
@@ -92,6 +93,53 @@ the janitor clears expired work every minute.
 Testing and reports each phase with its time, see [TESTING.md](TESTING.md).
 `--throttle 800` and `--restart-at uploading` reproduce a poor connection and Chrome
 stopping the worker.
+
+## Scheduled Statuses, the pilot
+
+Added **2026-10-31T13:12:52+05:30**, with Release 1 live since 2026-10-31 (production at 68da1bd,
+extension 2.1.1). The plan and as built are in [docs/scheduling.md](docs/scheduling.md),
+Section 15. Every scheduled run only prepares; the person presses Send.
+
+**What the operator controls, and where.** Open `/admin`, a person's row menu,
+**Limits and scheduling**: a **Scheduling pilot on** checkbox, and four figures, clips a
+day, upload MB a day, scheduled posts allowed (**pending**) and the held clip budget in
+MB. A blank figure goes back to the default: pending 30 (90 for an admin), budget
+400 MB (1 GB for an admin), scheduling off (on for an admin), clips and uploads the
+site's own daily defaults. The page shows "scheduling on" or "scheduling off" on each
+row. The server enforces the daily clips and uploads; the page tells the extension the
+pending and budget figures and the extension enforces those ([API.md](API.md),
+`POST /api/admin/limits`, [DATA_MODEL.md](DATA_MODEL.md) Table DM-1).
+
+**What the operator cannot see.** The queue lives in the person's own browser, so the
+server holds no list of schedules and the admin page cannot show one
+([OBSERVABILITY.md](OBSERVABILITY.md), "The scheduled run log"). Scheduling failures
+the page saw arrive in the admin page's **Failures** table with source `schedule`, a
+code and versions, never a caption or clip name.
+
+**Where the run log is.** In the person's browser, `schedLog` in the extension's
+`chrome.storage.local`, the last 200 runs, shown on the queue page under **Run log**
+(the account page's **Scheduled Statuses** shows the same page). It holds codes and
+timings only, and `rung`, the way WhatsApp was reached. To read it, ask the person to
+open the queue and send what the log says, or to screenshot it.
+
+### Table RB-5: a person says their schedule did not run
+
+| Ask or check | Means | Do |
+|---|---|---|
+| Is Chrome open and the computer awake at the due time? | the queue lives in the extension; a closed browser runs nothing | tell the person; a run up to 30 minutes late still goes ahead outside quiet hours, later is `missed` |
+| Does the queue page show **Needs you**? | a prepared clip waiting for Send, a miss, a sign out, or a notification asking them | follow the line's own action; a clip left unsent in WhatsApp blocks the next run until it is sent or closed |
+| Is the queue **Paused**? | **Pause queue** stops every run | **Resume**, then one of the three choices for what fell due while paused |
+| Run log `code` `signed-out` | WhatsApp Web is signed out in that browser | scan the QR code in that tab, then use the row's own action on the queue page |
+| Run log `code` `composer-open`, `in-use` or `busy` | a Status composer was already open, or the person was using WhatsApp | send or close it; the run waits or asks |
+| Run log `code` `ask`, or `rung` `S4` | no quiet way worked on this machine, so it asked by notification | press the notification; **Try quiet mode now (nothing is sent)** shows which ways work. [Unverified] on any real machine until the owner's Phase 0 is reported |
+| Run log `focusMoved` true | a run changed focus, which a quiet run should never do | keep the log line, report it as a defect (D-105, docs/scheduling.md Section 15) |
+| The page has no **Schedule**, or the account section says too old | the pilot switch is off, or the extension is older than 2.1.0 | switch the person on at `/admin`, or have them update from `/install` |
+| A refusal naming a limit (pending, budget, quota) | the person's figures | raise it in **Limits and scheduling** if the owner agrees |
+
+If a person's queue is wedged and nothing above fits, the safe moves are **Pause
+queue**, cancel the stuck row (Undo is offered), and as a last resort reload the
+extension on `chrome://extensions`, which rebuilds its alarms on the next wake. [Unverified]
+that a reload leaves every queued clip intact; unit tests cover the wake, not a reload.
 
 ## The GIF picker will not work
 
