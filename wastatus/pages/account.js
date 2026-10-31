@@ -10,9 +10,13 @@
   const MIN_VERSION = root.dataset.minVersion || "0";
   const $ = (id) => document.getElementById(id);
   const UI = window.SnipShareUI;
-  const SECTIONS = ["profile", "security", "history", "keys", "feedback", "extension", "data"];
+  const SECTIONS = ["profile", "security", "history", "scheduled", "keys", "feedback",
+    "extension", "data"];
   const NAMES = { giphy: "GIPHY", klipy: "KLIPY", both: "both" };
-  const loaded = { history: false, extension: false };
+  const loaded = { history: false, extension: false, scheduled: false };
+  // The person's pilot switch for Scheduled Statuses, from /api/account: null until
+  // it answers, and the section is offered only when it is on.
+  let scheduling = null;
   let me = null;
   let historyDays = 90;
   let keptClips = 10;
@@ -98,7 +102,7 @@
   /* ── one section at a time ─────────────────────────────── */
 
   function open(name) {
-    if (!SECTIONS.includes(name)) name = "profile";
+    if (!SECTIONS.includes(name) || (name === "scheduled" && scheduling === false)) name = "profile";
     SECTIONS.forEach((section) => show($(section), section === name));
     document.querySelectorAll(".account__nav [data-section]").forEach((link) => {
       if (link.dataset.section === name) link.setAttribute("aria-current", "page");
@@ -109,6 +113,7 @@
     if (name === "history" && !loaded.history) loadHistory();
     if (name === "extension" && !loaded.extension) checkExtension();
     if (name === "feedback") paintLastFailure();
+    if (name === "scheduled") { openScheduled(); tellShown(); }
   }
   window.addEventListener("hashchange", () => open(location.hash.slice(1)));
 
@@ -597,6 +602,166 @@
     port.postMessage({ cmd: "hello" });
   }
 
+  /* ── Scheduled Statuses ────────────────────────────────── */
+
+  /* The queue lives in the extension (docs/scheduling.md, SC-D2) and its page is the
+     one queue there is: it is framed here, not drawn a second time. The frame says
+     only its height; this page says only the theme and which part of the frame is on
+     screen. Both sides check the other's origin. docs/account-page.md, Table AP-8. */
+  const EXT_ORIGIN = EXT_ID ? `chrome-extension://${EXT_ID}` : "";
+  // Long enough for a cold service worker to start and answer the frame; past it the
+  // frame is taken down and the queue offered in a tab of its own.
+  const FRAME_WAIT_MS = 6000;
+  let frame = null;
+  let frameReady = false;
+  let frameTimer = 0;
+
+  function failure(code, message) {
+    const error = new Error(message || code);
+    error.code = code;
+    return error;
+  }
+
+  // One request over a port of its own, answered once.
+  function askExtension(message, wait) {
+    return new Promise((resolve, reject) => {
+      if (!EXT_ID || !(window.chrome && chrome.runtime && chrome.runtime.connect)) {
+        return reject(failure("missing"));
+      }
+      let port;
+      try { port = chrome.runtime.connect(EXT_ID, { name: "snipshare" }); } catch {
+        return reject(failure("missing"));
+      }
+      let settled = false;
+      const finish = (then, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try { port.disconnect(); } catch { /* gone */ }
+        then(value);
+      };
+      const timer = setTimeout(() => finish(reject, failure("silent")), wait);
+      port.onMessage.addListener((answer) => {
+        if (answer && answer.done) finish(resolve, answer.done);
+        else if (answer && answer.error) finish(reject, failure(answer.error.code || "failed", answer.error.message));
+      });
+      port.onDisconnect.addListener(() => {
+        void chrome.runtime.lastError;
+        finish(reject, failure("missing"));
+      });
+      port.postMessage(message);
+    });
+  }
+
+  // A state that is not the queue: one sentence and, where there is one, the one
+  // thing to do about it.
+  function schedNote(text, { link = "", openTab = false } = {}) {
+    show($("sched-loading"), false);
+    $("sched-note-text").textContent = text;
+    $("sched-note-link").textContent = link;
+    show($("sched-note-link"), Boolean(link));
+    show($("sched-note-open"), openTab);
+    show($("sched-note-actions"), Boolean(link) || openTab);
+    show($("sched-note-error"), false);
+    show($("sched-note"));
+  }
+
+  async function openScheduled() {
+    if (loaded.scheduled || scheduling !== true) return;
+    loaded.scheduled = true;
+    const mobile = navigator.userAgentData ? navigator.userAgentData.mobile
+      : /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    if (mobile) return schedNote("Scheduling works in Chrome on a computer with the extension.");
+    let hello;
+    try {
+      hello = await askExtension({ cmd: "hello" }, 5000);
+    } catch (error) {
+      if (error.code === "silent") {
+        return schedNote("The extension did not answer. Reload this page, and if it still "
+          + "does not answer, update the extension.", { link: "Update the extension" });
+      }
+      return schedNote("Your queue is kept by the SnipShare extension. Add it to Chrome on "
+        + "this computer to see and change it here.", { link: "Get the extension" });
+    }
+    if (older(hello.version, MIN_VERSION) || !(hello.features || []).includes("schedule")) {
+      return schedNote(`This extension, version ${hello.version || "unknown"}, cannot schedule. `
+        + "Update it to see and change your queue here.", { link: "Update the extension" });
+    }
+    mountFrame();
+  }
+
+  function mountFrame() {
+    const wrap = $("sched-frame-wrap");
+    frame = document.createElement("iframe");
+    frame.title = "Your Scheduled Statuses";
+    // Laid out at full width from the start, so the first height it sends is the
+    // right one; it stays out of sight until then.
+    frame.style.height = "0";
+    frame.style.visibility = "hidden";
+    frame.src = `${EXT_ORIGIN}/queue.html?embed=1&theme=${encodeURIComponent(UI ? UI.theme() : "system")}`;
+    wrap.append(frame);
+    show(wrap);
+    frameTimer = setTimeout(() => { if (!frameReady) frameFailed(); }, FRAME_WAIT_MS);
+  }
+
+  function frameFailed() {
+    if (frame) frame.remove();
+    frame = null;
+    show($("sched-frame-wrap"), false);
+    schedNote("Your queue could not be shown on this page. It opens in a tab of its own.",
+      { openTab: true });
+  }
+
+  window.addEventListener("message", (event) => {
+    if (!frame || event.origin !== EXT_ORIGIN || event.source !== frame.contentWindow) return;
+    const height = event.data && event.data.snipshareQueueHeight;
+    if (!Number.isFinite(height)) return;
+    frame.style.height = `${Math.min(Math.max(Math.round(height), 120), 20000)}px`;
+    if (!frameReady) {
+      frameReady = true;
+      clearTimeout(frameTimer);
+      show($("sched-loading"), false);
+      frame.style.visibility = "";
+      show($("sched-own-tab"));
+    }
+    tellShown();
+  });
+
+  // The frame is as tall as its content, so its toast is placed by what is on screen.
+  let shownFrame = 0;
+  function tellShown() {
+    if (!frameReady || !frame || shownFrame) return;
+    shownFrame = requestAnimationFrame(() => {
+      shownFrame = 0;
+      if (!frame || $("scheduled").hidden) return;
+      const box = frame.getBoundingClientRect();
+      frame.contentWindow.postMessage({ snipshareShown: {
+        top: Math.max(0, -box.top), bottom: window.innerHeight - box.top } }, EXT_ORIGIN);
+    });
+  }
+  window.addEventListener("scroll", tellShown, { passive: true });
+  window.addEventListener("resize", tellShown);
+  document.addEventListener("snipshare:theme", (event) => {
+    if (frame && frameReady) frame.contentWindow.postMessage({ snipshareTheme: event.detail }, EXT_ORIGIN);
+  });
+
+  async function openQueueTab(button) {
+    busy(button, "Opening");
+    show($("sched-note-error"), false);
+    try {
+      await askExtension({ cmd: "open-queue" }, 8000);
+    } catch (error) {
+      const words = error.code === "missing" || error.code === "silent"
+        ? "The extension did not answer. Reload this page and try again." : error.message;
+      if ($("sched-note").hidden) say(words, { tone: "error" });
+      else { $("sched-note-error").textContent = words; show($("sched-note-error")); }
+    } finally {
+      idle(button);
+    }
+  }
+  $("sched-own-tab").addEventListener("click", (event) => openQueueTab(event.currentTarget));
+  $("sched-note-open").addEventListener("click", (event) => openQueueTab(event.currentTarget));
+
   /* ── privacy and data ──────────────────────────────────── */
 
   $("delete-confirm").addEventListener("input", () => {
@@ -639,6 +804,9 @@
     paintProfile(data.profile);
     paintSessions(data.sessions);
     paintKeys(data.gifs);
+    scheduling = Boolean(data.scheduling && data.scheduling.enabled);
+    show($("scheduled-link"), scheduling);
+    if (location.hash.slice(1) === "scheduled") open("scheduled");
     document.querySelectorAll("[data-kept]").forEach((e) => { e.textContent = data.kept; });
     document.querySelectorAll("[data-days]").forEach((e) => { e.textContent = data.history_days; });
     paintLastFailure();

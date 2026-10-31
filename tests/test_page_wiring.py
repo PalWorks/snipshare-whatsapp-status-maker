@@ -969,6 +969,33 @@ class TestSchedulingControls:
         for name in ("schedule", "queue-add", "queue-open", "sched-cancel"):
             assert f'$("{name}").addEventListener("click"' in script
 
+    def test_up_next_goes_to_the_accounts_scheduled_section(self, script):
+        """One queue UI: Up next's Scheduled opens the account's Scheduled Statuses
+        section in this tab, as the Account link does (docs/account-page.md, AP-8).
+        The extension's own tab stays for the toast and for the section's fallback."""
+        assert ('$("queue-open").addEventListener("click", () => '
+                'location.assign("/account#scheduled"));') in script
+        assert '$("queue-open").addEventListener("click", openQueuePage)' not in script
+        assert 'run: () => openQueuePage()' in script
+        account = (WEB.parent / "pages" / "account.js").read_text(encoding="utf-8")
+        assert 'cmd: "open-queue"' in account
+
+    def test_the_account_frames_the_queue_from_its_extension_alone(self):
+        account = (WEB.parent / "pages" / "account.js").read_text(encoding="utf-8")
+        page = (WEB.parent / "pages" / "account.html").read_text(encoding="utf-8")
+        assert '"history", "scheduled", "keys"' in account, "after History"
+        assert "event.origin !== EXT_ORIGIN || event.source !== frame.contentWindow" in account
+        assert "/queue.html?embed=1&theme=" in account
+        assert "frame.title = " in account
+        assert re.search(r'postMessage\(\{ snipshareTheme: [^}]*\}, EXT_ORIGIN\)', account)
+        assert '"*"' not in account
+        assert 'href="#scheduled" data-section="scheduled"' in page
+        assert page.index('data-section="history"') < page.index('data-section="scheduled"') \
+            < page.index('data-section="keys"')
+        for line in ("Scheduling works in Chrome on a computer with the extension",
+                     "Get the extension", "Update the extension", "Open the queue in its own tab"):
+            assert line in account + page, line
+
     def test_every_error_code_the_worker_gives_has_words(self, script):
         body = script[script.index("function schedProblem"):script.index('$("schedule").addEventListener')]
         for code in ("past", "far", "limit", "budget", "quota", "network", "gone",

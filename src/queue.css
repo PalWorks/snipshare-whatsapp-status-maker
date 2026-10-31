@@ -32,8 +32,11 @@
   --touch: 40px;
   --shadow-lift: 0 6px 20px rgba(16, 24, 40, .16);
 }
+/* Dark follows the system unless the site's choice says otherwise: SnipShare's
+   account page frames this page with ?theme=, and data-theme wins both ways, as on
+   the site (CODE_STYLE.md, Table CS-3). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #121316;
     --surface: #1a1c1f;
@@ -58,6 +61,31 @@
     --hi: #1c3a2a;
     --shadow-lift: 0 6px 20px rgba(0, 0, 0, .55);
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121316;
+  --surface: #1a1c1f;
+  --sunken: #22252a;
+  --text: #e6e8eb;
+  --muted: #9ba1a8;
+  --border: #2b2f34;
+  --border-strong: #3d4248;
+  --accent: #2ea36a;
+  --accent-hover: #35b276;
+  --accent-text: #06130c;
+  --focus: #a8c7fa;
+  --danger: #f2b8b5;
+  --danger-bg: #3a1614;
+  --warn-bg: #2e2412;
+  --warn-line: #6b5326;
+  --t-ok: #5fd39a;
+  --t-wait: #8fb8f0;
+  --t-warn: #e2a25c;
+  --t-bad: #f2b8b5;
+  --t-muted: #9ba1a8;
+  --hi: #1c3a2a;
+  --shadow-lift: 0 6px 20px rgba(0, 0, 0, .55);
 }
 
 * { box-sizing: border-box; }
@@ -290,6 +318,17 @@ summary { cursor: pointer; min-height: var(--touch); display: flex; align-items:
 .btn--toast:focus-visible { outline-color: #9fd0ff; }
 
 body.offline #content { opacity: .55; }
+
+/* -- framed in SnipShare's account page (?embed=1) ----------------------------------- */
+
+/* The account section gives the heading and the card's ground, so the page brings
+   neither. The frame is as tall as the page, so a fixed toast would sit at its foot,
+   out of sight: it is placed in the part the person can see instead (queue-page.js). */
+html.embed body { background: transparent; padding: 0 0 8px; }
+html.embed .top { display: none; }
+html.embed main { max-width: none; }
+html.embed .toast { position: absolute; bottom: auto; }
+html.embed #loading { margin-top: 0; }
 body.offline #content button { pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -335,7 +374,7 @@ body.offline #content button { pointer-events: none; }
   tr.day th { display: table-cell; margin: 0; padding: 8px 14px; background: var(--sunken); border-bottom: 1px solid var(--border); }
   td.c-when { justify-self: auto; text-align: left; }
   td.c-act { display: table-cell; text-align: right; white-space: nowrap; }
-  td.c-act > * { display: inline-flex; vertical-align: middle; margin-left: 6px; }
+  td.c-act > * { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 6px; }
   td.c-act .btn { flex: none; }
   .editor { align-items: flex-start; }
   .editor__words, .editor__err, .editor__warn { text-align: left; }

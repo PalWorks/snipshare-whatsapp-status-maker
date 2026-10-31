@@ -16,6 +16,9 @@
 <p id="live" class="sr" role="status" aria-live="polite"></p>
 
 <main id="main">
+  <!-- Framed somewhere that is not SnipShare: nothing else is drawn or connected. -->
+  <p id="elsewhere" class="banner banner--bad" role="alert" hidden>This queue opens only inside SnipShare.</p>
+
   <!-- Banners for the states that are not the queue itself. -->
   <p id="offline" class="banner banner--bad" role="alert" hidden>
     <span>Lost the connection to the extension. Trying again.</span>
@@ -128,6 +131,7 @@
   <button id="toast-close" type="button" class="btn btn--toast" aria-label="Dismiss">Close</button>
 </div>
 
+<script src="config.js"></script>
 <script src="queue.js"></script>
 <script src="queue-page.js"></script>
 </body>

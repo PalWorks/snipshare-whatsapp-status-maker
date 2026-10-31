@@ -417,6 +417,16 @@ a.row--link:hover { background: var(--surface-sunken); color: var(--text); }
 .account .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .account .stat b { font-size: 18px; }
 
+/* Scheduled Statuses: the extension's queue page in a frame as tall as its content,
+   so the account page scrolls and the frame never does (docs/account-page.md, AP-8). */
+.sched-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sched-head h1 { margin-bottom: 0; }
+#sched-loading { display: grid; gap: 10px; margin-top: 16px; }
+#sched-note { margin-top: 16px; }
+#sched-note .actions { margin: 0; }
+.sched-frame { margin-top: 8px; }
+.sched-frame iframe { display: block; width: 100%; height: 480px; border: 0; background: transparent; }
+
 .hero-card { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .hero-card h1 { margin: 0 0 2px; font-size: 22px; overflow-wrap: anywhere; }
 .hero-card p { margin: 0 0 6px; }

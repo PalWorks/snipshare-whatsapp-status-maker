@@ -816,8 +816,51 @@ class TestAccountPage:
         page = data.decode()
         assert response.status == 200 and "{{" not in page
         assert f'data-token="{person.token}"' in page
-        for section in ("profile", "history", "keys", "feedback", "extension", "data"):
+        for section in ("profile", "history", "scheduled", "keys", "feedback", "extension",
+                        "data"):
             assert f'id="{section}"' in page
+
+    def test_its_policy_frames_the_extensions_queue_and_nothing_else(self, site):
+        """Scheduled Statuses shows the extension's queue page in a frame
+        (docs/account-page.md, Table AP-8): that one extension is added to frame-src,
+        and every other directive is the shared policy's, frame-ancestors included."""
+        person = approved(site, "a@example.com")
+        response, _ = person.request("GET", "/account")
+        policy = response.getheader("Content-Security-Policy")
+        directives = dict(d.strip().split(" ", 1) for d in policy.split(";"))
+        shared = dict(d.strip().split(" ", 1) for d in portal.PAGE_POLICY.split(";"))
+        assert directives["frame-src"] == shared["frame-src"] + " chrome-extension://" + "a" * 32
+        assert {k: v for k, v in directives.items() if k != "frame-src"} == \
+            {k: v for k, v in shared.items() if k != "frame-src"}
+        assert directives["frame-ancestors"] == "'none'"
+        assert response.getheader("X-Frame-Options") == "DENY"
+        # The other pages do not gain it.
+        for path in ("/", "/install", "/admin"):
+            other = Browser(site).request("GET", path)[0].getheader("Content-Security-Policy") or ""
+            assert "chrome-extension:" not in other, path
+
+    @pytest.mark.parametrize("value", ["", "A" * 32, "a" * 31, "q" * 32,
+                                       "a" * 32 + "; script-src *", "a" * 32 + " https://x"])
+    def test_an_extension_id_that_is_not_chromes_shape_adds_nothing(self, value):
+        assert portal.account_policy(value) == portal.PAGE_POLICY
+
+    def test_the_section_is_offered_only_with_the_pilot_switch(self, site):
+        person = approved(site, "a@example.com")
+        _, data = person.api("GET", "/api/account")
+        assert data["scheduling"] == {"enabled": False}
+        admin = Browser(site)
+        admin.sign_in(ADMIN)
+        _, data = admin.api("GET", "/api/account")
+        assert data["scheduling"] == {"enabled": True}
+        admin.api("POST", "/api/admin/limits", {"email": "a@example.com",
+                                                "changes": {"scheduling": True}})
+        _, data = person.api("GET", "/api/account")
+        assert data["scheduling"] == {"enabled": True}
+        # The page has the section, its link hidden until the switch says otherwise.
+        page = person.request("GET", "/account")[1].decode()
+        link = re.search(r'<a [^>]*data-section="scheduled"[^>]*>', page).group(0)
+        assert re.search(r"\shidden[\s>]", link)
+        assert 'id="scheduled"' in page and "Scheduled Statuses" in page
 
     def test_the_tool_page_links_to_it(self):
         import pathlib

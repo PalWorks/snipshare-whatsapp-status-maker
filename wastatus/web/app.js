@@ -1302,7 +1302,10 @@ async function openQueuePage() {
     fail($("post-error"), error.message);
   }
 }
-$("queue-open").addEventListener("click", openQueuePage);
+// Up next's Scheduled goes to the account's Scheduled Statuses section, in this tab
+// as the Account link does, where the queue is framed (docs/account-page.md, AP-8).
+// That section falls back to openQueue's tab of its own when it cannot frame it.
+$("queue-open").addEventListener("click", () => location.assign("/account#scheduled"));
 
 /* Up next: a glance at the next three, from the extension. Quiet when it cannot
    say, since it is not a task. */

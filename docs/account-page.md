@@ -131,3 +131,63 @@ is Google's. Rows linking to Google's password and recovery pages were added and
 removed at the owner's word the same hour: advice about a Google password from a
 third-party site confuses more than it helps. Signing in with Google is the whole
 story, and the page says only that.
+
+## Scheduled Statuses in the account, 2026-10-31T11:21:01+05:30
+
+Asked by the owner as "Scheduled Videos": the queue, seen and managed from the
+account page's menu. Named **Scheduled Statuses**, the product's word for what is
+posted and the queue page's own title; the menu's other labels are short nouns
+("History", "Extension"), so the product's term reads as one of them. The queue lives
+only in the extension (docs/scheduling.md, SC-D2) and its page already exists, so the
+lead's decision was to frame that page here rather than draw the table a second time.
+
+### Table AP-8: the section
+
+| Part | What it does |
+|---|---|
+| Menu and section | `#scheduled`, after History, offered only when the person's pilot switch is on (`scheduling.enabled` in `/api/account`). Off, the link stays hidden and `/account#scheduled` opens Profile |
+| Loading | skeleton rows until the extension answers and the frame has said its height |
+| Extension missing | "Your queue is kept by the SnipShare extension...", **Get the extension** (`/install`) |
+| Too old, or no `schedule` feature | the version, and **Update the extension** (`/install`) |
+| Not answering in 5 s | reload, or **Update the extension** |
+| Phone | one line, "Scheduling works in Chrome on a computer with the extension.", nothing to press |
+| Ready | `chrome-extension://<id>/queue.html?embed=1&theme=<system, light or dark>` in a frame titled "Your Scheduled Statuses", as tall as its content; **Open in its own tab** beside the heading |
+| Frame silent for 6 s | the frame is removed; **Open the queue in its own tab** asks the extension (`open-queue`) |
+| Up next on the tool page | **Scheduled** goes to `/account#scheduled` in the same tab, as the Account link does; the toast after scheduling still opens the queue's own tab |
+
+### Table AP-9: what crosses between the page and the frame
+
+| Direction | Message | Checked |
+|---|---|---|
+| frame to page | `{snipshareQueueHeight}` after every change of layout | sent to `CONFIG.site`'s origin only; taken only from `chrome-extension://<id>` and from this frame's window; clamped to 120 to 20000 pixels |
+| page to frame | `{snipshareTheme}` when the theme changes, no reload | sent to the extension's origin only; taken only from the site's origin and from the frame's parent |
+| page to frame | `{snipshareShown: {top, bottom}}` on scroll and resize | the same; the frame puts its toast in the part on screen, since a frame as tall as its content would otherwise show it at its foot, out of sight |
+
+The frame also refuses to draw or connect when any ancestor is not the site
+(`location.ancestorOrigins`). The manifest exposes `queue.html`, `queue.css`,
+`queue.js` and `queue-page.js` as web accessible to the local addresses, which
+`scripts/build_extension.py` replaces with the site alone, as for
+`externally_connectable`. The account page's policy adds `chrome-extension://<id>` to
+`frame-src` when the configured id has Chrome's shape (32 letters a to p), and changes
+nothing else.
+
+### As built, 2026-10-31T11:21:01+05:30
+
+Driven in headless Chromium with the unpacked extension in a scratch profile against a
+local hosted server: one scheduled row shown at 360 and 1280 pixels in light and dark,
+no sideways scroll, the theme followed without a reload, the time moved an hour by
+keyboard alone (Tab into the frame, F2, arrows, Enter) with the toast on screen, a
+message from the wrong origin ignored, the fallback after 6 s opening the queue's tab,
+the missing extension and phone states, and the standalone queue page unchanged.
+
+Found in the building:
+
+- The frame's first height is sent on a timer, not `requestAnimationFrame`: Chrome
+  runs no frames for a cross-origin frame that is hidden or has no height, which is
+  how the page holds it until that first height arrives.
+- With `chrome-extension://<id>` taken back out of `frame-src`, the frame still loaded:
+  Chromium lets extension resources past a page's policy. The `frame-src` entry is
+  kept as the explicit statement of what the page frames. [Inference] other Chromium
+  builds behave the same; only the bundled Chromium was tried.
+- The queue's row buttons sat high in their outline at table width, in the standalone
+  page too; centred.

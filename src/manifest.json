@@ -50,6 +50,20 @@
       "http://localhost/*"
     ]
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "queue.html",
+        "queue.css",
+        "queue.js",
+        "queue-page.js"
+      ],
+      "matches": [
+        "http://127.0.0.1/*",
+        "http://localhost/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [

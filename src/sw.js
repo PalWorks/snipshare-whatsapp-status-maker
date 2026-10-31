@@ -866,11 +866,21 @@ async function whatsappState() {
   return (await signedIn(tab.id)) ? "signed-in" : "open";
 }
 
+// A tab already showing this video whose player is ready to be read, with what it
+// said, or null. A tab that does not answer is never used: it was open before the
+// extension was installed or reloaded, so it has no recorder and nothing to read,
+// and bringing it forward to wait on it is what left the page stuck at "Getting the
+// video" (2026-10-31).
 async function videoTab(videoId) {
   const tabs = await chrome.tabs.query({ url: "https://www.youtube.com/watch*" });
-  return tabs.find((t) => {
-    try { return new URL(t.url).searchParams.get("v") === videoId; } catch { return false; }
-  }) || null;
+  for (const t of tabs) {
+    let same = false;
+    try { same = new URL(t.url).searchParams.get("v") === videoId; } catch { same = false; }
+    if (!same || t.discarded) continue;
+    const info = await tabInfo(t.id);
+    if (info && info.ready && info.videoId === videoId) return { tab: t, info };
+  }
+  return null;
 }
 
 async function readyInfo(tabId, until, signal) {
@@ -991,28 +1001,31 @@ async function pageCapture(op, message, sender) {
       if (!artwork) throw new PageFailure("Could not get the video's picture from YouTube. Try again.", "thumbnail");
     }
 
-    // A tab already showing this video is used as it is, and left as it was. If
-    // there is none, one opens beside the page, in front only until its player is
-    // ready, muted, and closes when the window is read. A tab that has never been
-    // in front is not given its media by Chrome, which is why it shows at all.
-    let tab = await videoTab(videoId);
-    let info = tab ? await tabInfo(tab.id) : null;
+    // A tab already showing this video, ready to be read, is used as it is and left
+    // as it was, wherever it is. Otherwise one opens beside the page, in front only
+    // until its player is ready, muted, and closes when the window is read. A tab
+    // that has never been in front is not given its media by Chrome, which is why it
+    // shows at all. The person's own tabs are never brought forward.
+    const found = await videoTab(videoId);
+    let tab = found && found.tab;
+    let info = found && found.info;
     const pageTab = sender.tab;
-    if (!tab || !info || !info.ready) {
+    if (!tab) {
       say("Opening the video for a moment", 0);
-      if (!tab) {
-        tab = await chrome.tabs.create({
-          url: `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(start)}s`,
-          active: true, ...(pageTab ? { windowId: pageTab.windowId, index: pageTab.index + 1,
-                                         openerTabId: pageTab.id } : {}),
-        });
-        opened = tab.id;
-        chrome.tabs.update(tab.id, { muted: true }).catch(() => {});
-      } else {
-        await chrome.tabs.update(tab.id, { active: true });
+      tab = await chrome.tabs.create({
+        url: `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(start)}s`,
+        active: true, ...(pageTab ? { windowId: pageTab.windowId, index: pageTab.index + 1,
+                                       openerTabId: pageTab.id } : {}),
+      });
+      opened = tab.id;
+      chrome.tabs.update(tab.id, { muted: true }).catch(() => {});
+      try {
+        info = await readyInfo(tab.id, Date.now() + PAGE.OPEN_TIMEOUT, op.abort.signal);
+      } finally {
+        // Back to the page whether the video opened or not, so a failure is read
+        // where it was asked for.
+        if (pageTab) await chrome.tabs.update(pageTab.id, { active: true }).catch(() => {});
       }
-      info = await readyInfo(tab.id, Date.now() + PAGE.OPEN_TIMEOUT, op.abort.signal);
-      if (pageTab) await chrome.tabs.update(pageTab.id, { active: true }).catch(() => {});
     }
     if (info.videoId !== videoId) throw new PageFailure("That tab is showing a different video. Try again.", "wrong-video");
     if (info.live) throw new PageFailure("Live streams cannot be clipped.", "live");

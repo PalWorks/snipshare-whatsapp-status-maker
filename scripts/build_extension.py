@@ -9,8 +9,9 @@ copy that talks to a real site instead, into `dist/`, which git ignores:
         --key ~/.config/wastatus/extension-key.pem
 
 * `config.js` names the site, so the toolbar button opens it.
-* The manifest lets that site, and nothing else, talk to the extension, and gives
-  the extension permission to upload to it. The local addresses are taken out.
+* The manifest lets that site, and nothing else, talk to the extension and frame its
+  queue page, and gives the extension permission to upload to it. The local
+  addresses are taken out.
 * The broad `optional_host_permissions` (any https address, which the Settings page
   asks for when pointed at a renderer of one's own) is taken out unless
   `--keep-custom-server` is given: the built copy only ever talks to its site.
@@ -84,6 +85,11 @@ def build(site: str, key: Path | None, out: Path, keep_custom_server: bool = Fal
     hosts = [h for h in manifest["host_permissions"] if h not in LOCAL]
     manifest["host_permissions"] = [*hosts, pattern]
     manifest["externally_connectable"] = {"matches": [pattern]}
+    # The queue page is framed by the site's account page (docs/account-page.md,
+    # Table AP-8), and by nothing else: the site replaces the local addresses here
+    # exactly as it does above.
+    for entry in manifest.get("web_accessible_resources", []):
+        entry["matches"] = [pattern]
     if not keep_custom_server:
         manifest.pop("optional_host_permissions", None)
     ident = ""

@@ -119,6 +119,31 @@ class TestTheManifest:
             "matches": ["http://127.0.0.1/*", "http://localhost/*"]}
         assert re.search(r'site: "(http://127\.0\.0\.1:\d+)"', source("config.js"))
 
+    def test_only_a_local_copy_may_frame_the_queue_until_it_is_built_for_a_site(self):
+        """The account page shows the queue in a frame (docs/account-page.md, Table
+        AP-8). Only the queue's own four files are exposed, and only to the site."""
+        assert self.manifest["web_accessible_resources"] == [{
+            "resources": ["queue.html", "queue.css", "queue.js", "queue-page.js"],
+            "matches": ["http://127.0.0.1/*", "http://localhost/*"]}]
+        for entry in self.manifest["web_accessible_resources"]:
+            assert "use_dynamic_url" not in entry, "the site frames it by a fixed address"
+            for name in entry["resources"]:
+                assert (EXT / name).is_file(), name
+
+    def test_the_framed_queue_tells_its_height_to_the_site_alone(self):
+        page = source("queue-page.js")
+        html = source("queue.html")
+        assert '<script src="config.js"></script>' in html
+        assert "new URL(CONFIG.site).origin" in page
+        assert "snipshareQueueHeight" in page
+        # Every message out names the site; none is sent to any origin.
+        assert re.findall(r"postMessage\([^)]*\)", page)
+        for call in re.findall(r"parent\.postMessage\(.*?\);", page, re.S):
+            assert call.rstrip(");").endswith("SITE_ORIGIN"), call
+        assert '"*"' not in page
+        # And every message in is from the site, from the page that framed it.
+        assert "event.origin !== SITE_ORIGIN" in page and "event.source !== window.parent" in page
+
     def test_no_real_address_is_written_into_it(self):
         """The repository is kept fit to publish: the site the extension serves is
         written in when it is built, never here. docs/hosted-page.md, Table HP-3."""
@@ -184,6 +209,9 @@ def test_a_build_for_a_site_talks_to_that_site_alone(tmp_path):
     assert manifest["externally_connectable"] == {"matches": ["https://snipshare.example.com/*"]}
     assert "https://snipshare.example.com/*" in manifest["host_permissions"]
     assert not any("127.0.0.1" in h or "localhost" in h for h in manifest["host_permissions"])
+    assert [e["matches"] for e in manifest["web_accessible_resources"]] == [
+        ["https://snipshare.example.com/*"]]
+    assert "queue.html" in manifest["web_accessible_resources"][0]["resources"]
     assert 'site: "https://snipshare.example.com"' in (out / "config.js").read_text()
     # The id Chrome will give it is the one printed, and the key is the public half.
     assert re.fullmatch(r"[a-p]{32}", ident)

@@ -41,6 +41,86 @@
   let conflict = null;     // { sid, kind, value, label }
   let choosing = false;    // the three-choice panel is open
 
+  // -- framed in SnipShare's account page ---------------------------------------------
+  // `queue.html?embed=1&theme=light|dark|system` is the same page inside the account's
+  // Scheduled Statuses section (docs/account-page.md, Table AP-8), so there is one
+  // queue to keep right. The frame is told its theme and what part of it is on screen,
+  // and tells back only its height; every message names the site's origin both ways,
+  // so nothing is said to, or taken from, any other page.
+  const QUERY = new URLSearchParams(location.search);
+  const EMBED = QUERY.get("embed") === "1";
+  const SITE_ORIGIN = (() => {
+    try { return new URL(CONFIG.site).origin; } catch { return ""; }
+  })();
+  let shown = { top: 0, bottom: Infinity };   // the part of this frame on screen
+
+  function setTheme(choice) {
+    if (choice === "light" || choice === "dark") document.documentElement.dataset.theme = choice;
+    else if (choice === "system") delete document.documentElement.dataset.theme;
+  }
+
+  function contentHeight() {
+    let bottom = document.body.getBoundingClientRect().bottom;
+    // An open menu hangs below the rows it belongs to; the frame grows to hold it.
+    document.querySelectorAll(".menu:not([hidden])").forEach((menu) => {
+      bottom = Math.max(bottom, menu.getBoundingClientRect().bottom + 8);
+    });
+    return Math.ceil(bottom + window.scrollY);
+  }
+
+  // A timer, not requestAnimationFrame: Chrome does not run frames for a cross-origin
+  // frame that is hidden or has no height, which is how the account page holds this
+  // one until its first height arrives, so a frame callback would never come.
+  let heightTimer = 0;
+  let lastHeight = 0;
+  function tellHeight() {
+    if (heightTimer) return;
+    heightTimer = setTimeout(() => {
+      heightTimer = 0;
+      const height = contentHeight();
+      if (height === lastHeight) return;
+      lastHeight = height;
+      window.parent.postMessage({ snipshareQueueHeight: height }, SITE_ORIGIN);
+    }, 16);
+  }
+
+  function placeToast() {
+    if (!EMBED) return;
+    const bar = $("toast");
+    if (bar.hidden) return;
+    const bottom = Math.min(shown.bottom, document.documentElement.clientHeight);
+    bar.style.top = `${Math.max(shown.top + 8, bottom - bar.offsetHeight - 16)}px`;
+  }
+
+  // False when framed anywhere but SnipShare: the page then draws nothing and never
+  // connects, so a page that got hold of this address learns nothing from it.
+  function embedStart() {
+    if (!EMBED) return true;
+    document.documentElement.classList.add("embed");
+    const ancestors = location.ancestorOrigins ? [...location.ancestorOrigins] : [];
+    if (!SITE_ORIGIN || window.parent === window || ancestors.some((o) => o !== SITE_ORIGIN)) {
+      $("loading").hidden = true;
+      $("elsewhere").hidden = false;
+      return false;
+    }
+    setTheme(QUERY.get("theme"));
+    window.addEventListener("message", (event) => {
+      if (event.origin !== SITE_ORIGIN || event.source !== window.parent) return;
+      const data = event.data || {};
+      if (typeof data.snipshareTheme === "string") setTheme(data.snipshareTheme);
+      if (data.snipshareShown && Number.isFinite(data.snipshareShown.top)
+          && Number.isFinite(data.snipshareShown.bottom)) {
+        shown = { top: data.snipshareShown.top, bottom: data.snipshareShown.bottom };
+        placeToast();
+      }
+    });
+    new ResizeObserver(tellHeight).observe(document.body);
+    new MutationObserver(tellHeight).observe(document.body,
+      { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "open", "class"] });
+    tellHeight();
+    return true;
+  }
+
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const nowMs = () => Date.now() + skew;
 
@@ -209,6 +289,7 @@
     $("toast-undo").hidden = !snap;
     bar.dataset.kind = kind;
     bar.hidden = false;
+    placeToast();
     toast = { sid, snap, paused: paused(), timer: setTimeout(hideToast, snap ? UNDO_MS : 7000) };
     announce(text + (snap ? ". Undo is available for 10 seconds." : ""));
   }
@@ -795,6 +876,8 @@
     setInterval(tick, 1000);
   }
 
-  wire();
-  connect();
+  if (embedStart()) {
+    wire();
+    connect();
+  }
 })();

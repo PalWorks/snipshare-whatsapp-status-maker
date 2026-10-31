@@ -2,6 +2,33 @@
 
 Human readable history. Newest first.
 
+## 2026-10-31, fifty-eighth pass
+
+Written **2026-10-31T11:21:01+05:30**.
+
+### Scheduled Statuses in the account page
+
+The account page's menu gains **Scheduled Statuses**, after History, for people whose
+scheduling pilot switch is on. It frames the extension's own queue page
+(`queue.html?embed=1`), so there is one queue UI: no header of its own, the site's
+theme, its height told to the page. States for loading, extension missing or too old,
+a phone, and a frame that does not answer (then the queue opens in its own tab). Up
+next's **Scheduled** on the tool page now goes there. The manifest exposes the four
+queue files to the site alone (`web_accessible_resources`, rewritten by the build), and
+the account page's policy names the extension in `frame-src`. See
+[docs/account-page.md](docs/account-page.md), Tables AP-8 and AP-9.
+
+### A capture no longer waits on a YouTube tab that cannot answer
+
+Added **2026-10-31T11:26:20+05:30**. When the video was already open in a tab from before the extension was
+installed or reloaded, that tab had no recorder; the extension brought it forward,
+waited 45 seconds on it and left the person there, the page showing "Getting the
+video". Now an existing tab is used only if its player answers and is ready, and it is
+read where it is, never brought forward; otherwise the extension opens its own muted tab
+as for a video not open anywhere, and the page's tab is made active again whether the
+video opened or not. `src/test/capture.test.js`. Tests: 156 Node, 1593 pytest passed
+and 7 skipped.
+
 ## 2026-10-31, fifty-seventh pass
 
 Written **2026-10-31T01:51:00+05:30**.

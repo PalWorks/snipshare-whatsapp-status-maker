@@ -912,7 +912,7 @@ class SiteHandler(hosted.Handler, serve.Handler):
         person = self.portal.accounts.session(token)
         if person is None:
             return self._redirect("/signin?next=/account")
-        self._policy = PAGE_POLICY
+        self._policy = account_policy(os.environ.get(EXTENSION_ID_ENV) or "")
         body = render_page("account.html", "Your account", "Profile, history, keys and "
                            "feedback.", {
                                "TOKEN": csrf_for(token), "SIGNED_IN": "1", **self._who(person),
@@ -1195,6 +1195,9 @@ class SiteHandler(hosted.Handler, serve.Handler):
             "gifs": self._gif_overview(person),
             "kept": KEEP_CLIPS, "history_days": accounts.HISTORY_DAYS,
             "contact": contact(),
+            # The pilot switch alone: the Scheduled Statuses section is offered only
+            # when it is on. The figures the extension enforces stay in /api/state.
+            "scheduling": {"enabled": self.portal.accounts.person_limits(person.email)["scheduling"]},
         })
 
     def _account_history(self, person: Person, body: dict[str, Any]) -> None:
@@ -1584,6 +1587,17 @@ PAGE_POLICY = (
     "img-src 'self' data: https://*.googleusercontent.com; "
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 )
+
+
+def account_policy(extension_id: str) -> str:
+    """The account page's policy: the shared one, plus framing the extension's queue
+    page (docs/account-page.md, Table AP-8). Only the extension this site serves, and
+    only an id shaped as Chrome makes them, so nothing set in the environment can
+    widen the policy. Every other directive, frame-ancestors included, is untouched."""
+    if not re.fullmatch(r"[a-p]{32}", extension_id or ""):
+        return PAGE_POLICY
+    return PAGE_POLICY.replace(f"frame-src {GOOGLE} {TURNSTILE};",
+                               f"frame-src {GOOGLE} {TURNSTILE} chrome-extension://{extension_id};")
 
 
 def app_policy(page: str) -> str:
