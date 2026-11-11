@@ -2,6 +2,19 @@
 
 Human readable history. Newest first.
 
+## 2026-11-11, sixtieth pass
+
+Written **2026-11-11T06:56:50+00:00**. Decision D-108.
+
+### A quieter morning digest
+
+The 08:30 IST digest in the owner's Chat space is now sent only when something in it
+needs the owner: a failed render or any failure report yesterday, anybody waiting for
+approval, under 20 GB of disk free, or a daily backup or tidy that failed (those two
+now run before the digest, and a failure there used to reach only the log). A quiet
+day sends nothing; a quiet Monday sends one line saying the watcher is running.
+Tests: pytest 1622 passed and 7 skipped.
+
 ## 2026-10-31, fifty-ninth pass
 
 Written **2026-10-31T12:23:37+05:30**. From the owner's review of production; decision D-107.

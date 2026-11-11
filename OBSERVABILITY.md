@@ -166,11 +166,17 @@ host crontab is involved, so removing the project removes all of it.
 | When | What |
 |---|---|
 | Every 5 minutes | free disk against the 5 GB floor; the oldest waiting job against 5 minutes |
-| Once a day, from 03:00 UTC | the digest, then the backup, then the tidy. Each step runs even if the one before it failed |
+| Once a day, from 03:00 UTC | the backup, then the tidy, then the digest. Each step runs even if the one before it failed, and the digest names a step that failed (D-108, 2026-11-11T06:56:50+00:00) |
 
-**The digest** goes to Chat: yesterday's people, clips and failures, MB uploaded; new
-and waiting requests; the busiest hour; the five most common failure reports as
-`source/phase/code xN`; free disk. **The backup** copies the people database to
+**The digest** goes to Chat only when something in it needs the owner (D-108, changed
+2026-11-11T06:56:50+00:00): a failed render or any failure report yesterday, anybody waiting for
+approval, under 20 GB free, or a daily backup or tidy that failed. It then holds
+yesterday's people, clips and failures, MB uploaded; new and waiting requests; the
+busiest hour; the five most common failure reports as `source/phase/code xN`; free
+disk; the failed step. A quiet day sends nothing. A quiet **Monday** sends one line,
+"week to <day>: all quiet. The watcher is running, the backup was made, N GB free", so
+a Monday with no message at all means the watcher itself has stopped: check the
+container's log for `the watch could not run its checks`. **The backup** copies the people database to
 `/data/backups/people-YYYY-MM-DD.db`, mode 600, seven kept. **The tidy** removes the
 clips of anyone not seen in 90 days and logs how many.
 

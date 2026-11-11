@@ -5,6 +5,32 @@ rationale and the alternatives that were rejected.
 
 ---
 
+## D-108: The daily digest is sent only when something needs the owner
+
+**Date:** 2026-11-11T06:56:50+00:00
+**Status:** built
+
+**Context.** The digest arrived every morning at 08:30 IST, and on most days it said
+nobody made anything and all was fine. The owner asked for it only when something is
+broken or approaching a limit. Everything urgent already raises its own alert as it
+happens (OBSERVABILITY.md, Table OB-4): the disk, memory, a long wait, the hourly cap,
+render failure rates, a person at 80 percent of a daily limit, failures from several
+people. Three things reached the owner only through the digest: a failure below an
+alert's threshold (a single capture failing), a backup or tidy that failed (logged,
+nowhere else), and, by its arrival, proof that the watcher thread was alive.
+
+**Decision** (the owner chose option a of three, 2026-11-11T06:56:50+00:00). The digest is sent only
+when yesterday had a failed render or any failure report, anybody is waiting for
+approval, under 20 GB is free (the alert itself is at 5 GB), or the backup or the tidy
+failed; those two now run first so the digest can say so. On a quiet Monday one line
+says the watcher is running and the backup was made.
+
+**Rejected.** b, the same with no Monday line: a dead watcher would look like a quiet
+week. c, a weekly digest only: a single failure would reach the owner up to seven
+days late.
+
+---
+
 ## D-107: One Schedule button, an Account menu on the tool page, no fine print in the footer
 
 **Date:** 2026-10-31T12:23:37+05:30

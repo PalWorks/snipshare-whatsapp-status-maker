@@ -18,6 +18,7 @@ import re
 import threading
 import time
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -1225,6 +1226,74 @@ def test_the_container_s_memory_is_read_from_its_cgroup(tmp_path):
     (tmp_path / "memory.max").write_text("max\n")
     assert watch.memory_use(tmp_path) is None
     assert watch.memory_use(tmp_path / "missing") is None
+
+
+class TestTheDailyDigest:
+    """D-108: the digest is sent only when something in it needs the owner, with one
+    all quiet line on Mondays so silence is never the only sign the watcher lives."""
+
+    MONDAY = datetime(2026, 11, 9, 3, 0, tzinfo=timezone.utc)
+    TUESDAY = datetime(2026, 11, 10, 3, 0, tzinfo=timezone.utc)
+
+    @pytest.fixture
+    def watcher(self, env, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+
+        from wastatus import watch
+
+        sent = []
+        monkeypatch.setattr(notify, "chat", lambda text, wait=False: sent.append(text) or True)
+        disk = SimpleNamespace(free=100_000_000_000)
+        monkeypatch.setattr(watch.shutil, "disk_usage", lambda path: disk)
+        store = accounts.Accounts(tmp_path / "people.db")
+        fake = SimpleNamespace(accounts=store, root=tmp_path, users_dir=tmp_path / "users",
+                               recent_outcomes=lambda seconds: [])
+        return SimpleNamespace(watch=watch.Watch(fake), store=store, sent=sent, disk=disk)
+
+    def test_a_quiet_weekday_sends_nothing(self, watcher):
+        assert watcher.watch.digest(self.TUESDAY) == ""
+        assert watcher.sent == []
+
+    def test_a_quiet_monday_sends_one_line(self, watcher):
+        text = watcher.watch.digest(self.MONDAY)
+        assert watcher.sent == [text]
+        assert "all quiet" in text and "\n" not in text
+
+    def test_clips_alone_are_not_news(self, watcher):
+        watcher.store._do("insert into usage (email, day, clips) values (?,?,?)",
+                          ("a@example.com", "2026-11-09", 4))
+        assert watcher.watch.digest(self.TUESDAY) == ""
+
+    def test_a_failed_render_is_sent(self, watcher):
+        watcher.store._do("insert into usage (email, day, clips, failures) values (?,?,?,?)",
+                          ("a@example.com", "2026-11-09", 2, 1))
+        assert "(1 failed)" in watcher.watch.digest(self.TUESDAY)
+
+    def test_a_single_failure_report_is_sent(self, watcher):
+        watcher.store.report("capture", "capture", "read")
+        text = watcher.watch.digest(self.TUESDAY + timedelta(hours=1))
+        assert "capture/capture/read x1" in text
+
+    def test_somebody_waiting_for_approval_is_sent(self, watcher):
+        watcher.store.request_access("b@example.com", {"name": "B"})
+        assert "1 waiting for you" in watcher.watch.digest(self.TUESDAY)
+
+    def test_a_disk_under_the_warning_is_sent(self, watcher):
+        watcher.disk.free = 15_000_000_000
+        assert "Disk free: 15 GB." in watcher.watch.digest(self.TUESDAY)
+
+    def test_a_failed_backup_reaches_the_digest(self, watcher, monkeypatch):
+        def broken(when):
+            raise OSError("read only")
+        monkeypatch.setattr(watcher.watch, "backup", broken)
+        watcher.watch.daily(self.TUESDAY)
+        assert len(watcher.sent) == 1
+        assert "The daily backup failed; see the log." in watcher.sent[0]
+
+    def test_the_backup_is_made_before_a_quiet_digest(self, watcher, tmp_path):
+        watcher.watch.daily(self.TUESDAY)
+        assert (tmp_path / "backups" / "people-2026-11-10.db").exists()
+        assert watcher.sent == []
 
 
 class TestTheSecondSecurityPass:

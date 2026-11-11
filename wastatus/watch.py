@@ -2,8 +2,10 @@
 
 Every few minutes: is the disk filling, is the container near its memory limit, is
 anything waiting too long for a render.
-Once a day: a digest of yesterday to the owner's Chat space, a backup of the
-people database, and the clips of anyone who has not been back in 90 days removed.
+Once a day: a backup of the people database, the clips of anyone who has not been
+back in 90 days removed, and a digest of yesterday to the owner's Chat space, sent
+only when something in it needs the owner, with one line on Mondays to show the
+watcher is still running (D-108).
 Nothing here goes on the host's crontab, so removing the project removes all of it.
 See docs/hosted-page.md, Phase 3.
 """
@@ -26,6 +28,8 @@ EVERY = 300                        # seconds between checks
 DISK_FLOOR = 5_000_000_000         # alert below this much free space
 QUEUE_WAIT = 300                   # alert when a popup job has waited this long
 DIGEST_AT = (3, 0)                 # 03:00 UTC is 08:30 in India
+DISK_WARN = 20_000_000_000         # the digest mentions the disk below this, well before DISK_FLOOR
+HEARTBEAT_DAY = 0                  # Monday: an all quiet line when there is nothing to report
 BACKUPS_KEPT = 7
 INACTIVE_DAYS = 90
 MEMORY_SHARE = 0.85                # alert when the container uses this much of its limit
@@ -93,13 +97,27 @@ class Watch:
     # -- once a day -----------------------------------------------------------
 
     def daily(self, when: datetime) -> None:
-        for step in (self.digest, self.backup, self.tidy):
+        # The backup and the tidy go first, so the digest can say if either failed:
+        # until D-108 a failure there reached only the log.
+        failed = []
+        for name, step in (("backup", self.backup), ("tidy", self.tidy)):
             try:
                 step(when)
             except Exception:  # noqa: BLE001 - one step failing must not skip the rest
-                log.exception("daily step %s failed", step.__name__)
+                log.exception("daily step %s failed", name)
+                failed.append(name)
+        try:
+            self.digest(when, failed)
+        except Exception:  # noqa: BLE001 - the digest is the last step; log and carry on
+            log.exception("daily step digest failed")
 
-    def digest(self, when: datetime) -> str:
+    def digest(self, when: datetime, failed: list[str] | tuple[str, ...] = ()) -> str:
+        """Yesterday, to Chat, only when something in it needs the owner: a failure,
+        anybody waiting for approval, the disk under DISK_WARN, or a daily step that
+        failed. Everything urgent has its own alert as it happens (OBSERVABILITY.md,
+        Table OB-4); this catches what is below an alert's threshold. On a quiet
+        Monday it sends one line instead, because silence must not be the only sign
+        that this thread is still alive. Returns what was sent, or "" for nothing."""
         store = self.portal.accounts
         yesterday = (when - timedelta(days=1)).strftime("%Y-%m-%d")
         rows = store.usage_table(yesterday)
@@ -125,9 +143,18 @@ class Watch:
             kinds = Counter(f"{r['source']}/{r['phase']}/{r['code']}" for r in reports)
             lines.append("Failures reported: " + ", ".join(
                 f"{kind} x{count}" for kind, count in kinds.most_common(5)))
-        free = shutil.disk_usage(self.portal.root).free / 1e9
+        free_bytes = shutil.disk_usage(self.portal.root).free
+        free = free_bytes / 1e9
         lines.append(f"Disk free: {free:.0f} GB.")
-        text = "\n".join(lines)
+        lines.extend(f"The daily {name} failed; see the log." for name in failed)
+        if failures or reports or pending or failed or free_bytes < DISK_WARN:
+            text = "\n".join(lines)
+        elif when.weekday() == HEARTBEAT_DAY:
+            text = (f"SnipShare, week to {yesterday}: all quiet. The watcher is running, "
+                    f"the backup was made, {free:.0f} GB free.")
+        else:
+            log.info("digest: nothing needs the owner; not sent")
+            return ""
         notify.chat(text)
         return text
 
