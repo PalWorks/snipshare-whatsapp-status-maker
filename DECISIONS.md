@@ -8,7 +8,7 @@ rationale and the alternatives that were rejected.
 ## D-108: The daily digest is sent only when something needs the owner
 
 **Date:** 2026-11-11T06:56:50+00:00
-**Status:** built
+**Status:** deployed 2026-11-11T07:22:09+00:00, production at 859cb4f
 
 **Context.** The digest arrived every morning at 08:30 IST, and on most days it said
 nobody made anything and all was fine. The owner asked for it only when something is

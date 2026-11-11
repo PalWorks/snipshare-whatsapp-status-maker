@@ -14,6 +14,7 @@ approval, under 20 GB of disk free, or a daily backup or tidy that failed (those
 now run before the digest, and a failure there used to reach only the log). A quiet
 day sends nothing; a quiet Monday sends one line saying the watcher is running.
 Tests: pytest 1622 passed and 7 skipped.
+Deployed 2026-11-11T07:22:09+00:00: production at 859cb4f, healthy.
 
 ## 2026-10-31, fifty-ninth pass
 
